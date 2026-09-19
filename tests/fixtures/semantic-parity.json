@@ -1,0 +1,14 @@
+[
+  {
+    "format": "html",
+    "source": "<ARTICLE z=\"2\" a=\"1\"><h1>Hello</h1></ARTICLE>",
+    "serialized": "<article a=\"1\" z=\"2\"><h1>Hello</h1></article>",
+    "mediaType": "text/html; charset=utf-8"
+  },
+  {
+    "format": "markdown",
+    "source": "# Hello\r\n\r\nWorld",
+    "serialized": "# Hello\n\nWorld\n",
+    "mediaType": "text/markdown; charset=utf-8"
+  }
+]

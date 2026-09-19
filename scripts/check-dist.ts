@@ -1,17 +1,19 @@
 import {execFile} from 'node:child_process';
+import {readdir, readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
 
-const execFileAsync = promisify(execFile);
-const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
-const {stdout} = await execFileAsync(
-  'git',
-  ['status', '--short', '--untracked-files=all', '--', 'dist'],
-  {cwd: repositoryRoot}
-);
+const root = fileURLToPath(new URL('..', import.meta.url));
+const snapshot = await readDist();
+await promisify(execFile)('pnpm', ['run', 'build'], {cwd: root});
+const rebuilt = await readDist();
+if (snapshot.size !== rebuilt.size || [...snapshot].some(([name, bytes]) => !rebuilt.get(name)?.equals(bytes))) {
+  throw new Error('Generated dist output is not reproducible.');
+}
+process.stdout.write('Generated dist output is reproducible.\n');
 
-if (stdout.length > 0) {
-  process.stderr.write('Generated dist files are not up to date:\n');
-  process.stderr.write(stdout);
-  process.exitCode = 1;
+async function readDist(): Promise<Map<string, Buffer>> {
+  const directory = new URL('../dist/', import.meta.url);
+  const names = (await readdir(directory)).sort();
+  return new Map(await Promise.all(names.map(async (name) => [name, await readFile(new URL(name, directory))] as const)));
 }

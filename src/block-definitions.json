@@ -1,14 +1,14 @@
 {
-  "extensionName": "TurboWarp-Example-Extension",
+  "extensionName": "Document Data",
+  "menus": {"documentFormat": {"acceptReporters": true, "items": ["html", "markdown"]}},
   "blocks": [
-    {
-      "opcode": "hello",
-      "blockType": "REPORTER",
-      "text": "hello [NAME]",
-      "description": "Returns a localized greeting for the supplied name.",
-      "arguments": {
-        "NAME": {"type": "STRING", "defaultValue": "world"}
-      }
-    }
+    {"opcode":"parseHtml","blockType":"COMMAND","text":"parse HTML [TEXT] as document [NAME]","description":"Parse HTML into a target-local named document tree. This does not sanitize HTML.","arguments":{"TEXT":{"type":"STRING","defaultValue":"<p>Hello</p>"},"NAME":{"type":"STRING","defaultValue":"page"}}},
+    {"opcode":"parseMarkdown","blockType":"COMMAND","text":"parse Markdown [TEXT] as document [NAME]","description":"Parse Markdown into a target-local named syntax tree.","arguments":{"TEXT":{"type":"STRING","defaultValue":"# Hello"},"NAME":{"type":"STRING","defaultValue":"page"}}},
+    {"opcode":"hasDocument","blockType":"BOOLEAN","text":"document [NAME] exists?","description":"Report whether the current target has the named document.","arguments":{"NAME":{"type":"STRING","defaultValue":"page"}}},
+    {"opcode":"deleteDocument","blockType":"COMMAND","text":"delete document [NAME]","description":"Delete the named document from the current target.","arguments":{"NAME":{"type":"STRING","defaultValue":"page"}}},
+    {"opcode":"documentKind","blockType":"REPORTER","text":"kind of document [NAME]","description":"Return html or markdown.","arguments":{"NAME":{"type":"STRING","defaultValue":"page"}}},
+    {"opcode":"getDocumentText","blockType":"REPORTER","text":"text in document [NAME] at [LOCATION]","description":"Get text at the root, a numeric tree path, or a simple HTML selector.","arguments":{"NAME":{"type":"STRING","defaultValue":"page"},"LOCATION":{"type":"STRING","defaultValue":"$"}}},
+    {"opcode":"replaceDocumentText","blockType":"COMMAND","text":"replace text in document [NAME] at [LOCATION] with [TEXT]","description":"Immutably replace text at the selected node.","arguments":{"NAME":{"type":"STRING","defaultValue":"page"},"LOCATION":{"type":"STRING","defaultValue":"$"},"TEXT":{"type":"STRING","defaultValue":"Hello"}}},
+    {"opcode":"serializeDocument","blockType":"REPORTER","text":"serialize document [NAME] as [FORMAT]","description":"Deterministically serialize a document in its native format. Cross-format conversion is rejected as lossy.","arguments":{"NAME":{"type":"STRING","defaultValue":"page"},"FORMAT":{"type":"STRING","defaultValue":"html","menu":"documentFormat"}}}
   ]
 }

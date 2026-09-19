@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Example Extension documentation</title>
+  <title>Document Data documentation</title>
   <style>
     body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;max-width:900px;margin:0 auto;padding:2rem;line-height:1.6;color:#222}
     code{background:#f3f3f3;padding:.1em .3em;border-radius:.25em}
@@ -11,18 +11,16 @@
   </style>
 </head>
 <body>
-  <h1>Example Extension</h1>
-  <p>This is the English user documentation published with the TurboWarp Extension Template.</p>
+  <h1>Document Data</h1>
+  <p>Parse HTML and Markdown into target-local named document trees, edit text, and expose deterministic UTF-8 HTTP response bodies.</p>
 
   <h2>Blocks</h2>
-  <h3><code>hello [NAME]</code></h3>
-  <p>Returns a localized greeting for the supplied name.</p>
+  <p>Use <code>parse HTML ... as document ...</code> or <code>parse Markdown ... as document ...</code>, then inspect, replace, or serialize its text. Tree locations use <code>$</code> or numeric paths such as <code>$[0][1]</code>. HTML also supports one simple tag, <code>#id</code>, or <code>.class</code> selector.</p>
 
-  <h2>Template requirement</h2>
-  <p>Repositories created from this template should replace this page with English documentation for their extension and keep the GitHub Pages URL in <code>extensionConfig.docsURI</code>.</p>
-  <p>They should also replace the example <code>blockIconURI</code> with a meaningful, self-contained SVG icon encoded as <code>data:image/svg+xml;base64,...</code>.</p>
+  <h2>Safety boundary</h2>
+  <p>Parsing does not sanitize HTML, execute scripts, or mount a DOM. HTML/Markdown conversion is rejected because it may be lossy. The extension is unsandboxed and its <code>DOCUMENT_DATA_MVP</code> flag defaults to off.</p>
 
   <h2>Development</h2>
-  <p>See the repository README and architecture documentation for build, test, release, and compatibility details.</p>
+  <p>Run <code>pnpm run check</code>. See the repository README and architecture documents for limits and the Named Data provider contract.</p>
 </body>
 </html>
