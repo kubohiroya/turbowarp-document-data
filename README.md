@@ -1,115 +1,125 @@
-# TurboWarp-Extension-Template
+# TurboWarp-Document-Data
 
 [日本語](README.ja.md)
 
-A reusable TypeScript template for developing, testing, building, and releasing TurboWarp extensions with Vite.
-
-## User guide
-
-Create a repository from this template, replace the package and extension metadata, implement blocks in `src/extension.ts`, and keep generated artifacts checked in.
-
-The template package is version-pinned when it is used as a reference:
-
-```bash
-pnpm add --save-exact @kubohiroya/turbowarp-extension-template@0.4.0
-```
+Named, target-local HTML and Markdown document trees for TurboWarp. This package was initialized from `turbowarp-extension-template` and integrates with the canonical `@kubohiroya/turbowarp-named-data` registry.
 
 ## What it does
 
-- builds a single TurboWarp-compatible JavaScript extension file;
-- emits a deterministic `dist/extension-manifest.json` API contract;
-- generates the README block reference from `src/block-definitions.json`;
-- verifies source, documentation, generated `dist/` output, repository policy, and npm package contents in one check.
+It parses HTML with parse5 and Markdown into mdast, stores the typed tree under a name, supports minimal text inspection/replacement, and deterministically serializes the native format. A Named Data provider exposes UTF-8 HTML or Markdown response bodies without depending on an unpublished shared package.
+
+This extension does **not** sanitize HTML, execute scripts, mount a browser DOM, or promise lossless conversion between HTML and Markdown. The existing `turbowarp-html` and `turbowarp-markdown` packages remain the fragment-construction APIs; this package owns parsed named-document lifecycle and body-provider behavior.
 
 ## Requirements and safety
 
-- Node.js 22 or newer;
-- pnpm through Corepack;
-- TurboWarp's unsandboxed extension option only when your extension metadata sets `unsandboxed: true`.
+- TurboWarp unsandboxed custom extension mode is required.
+- `DOCUMENT_DATA_MVP` is fixed at startup and defaults to `false`.
+- Source/output size, node count, and depth are bounded.
+- Parse and edit operations replace a binding only after the complete new tree passes validation.
+- Bindings and open body handles are released on `PROJECT_STOP_ALL`.
 
-Only load generated extension code that you trust. Unsandboxed extensions run with browser page access.
-
-## Installation
-
-```bash
-corepack enable
-pnpm install --frozen-lockfile
-```
-
-## Quick start
-
-1. Create a repository from this template.
-2. Update `package.json` metadata and `repo-policy.json`.
-3. Edit `src/config.ts`.
-4. Define blocks in `src/block-definitions.json`.
-5. Implement runtime behavior in `src/extension.ts`.
-6. Run `pnpm run docs`.
-7. Run `pnpm run check`.
-
-For continuous rebuilding during development:
-
-```bash
-pnpm run dev
-```
+Build with `pnpm run build`, then load `dist/document-data.js`. Package example: `@kubohiroya/turbowarp-document-data@0.1.0`.
 
 ## Block reference
 
 <!-- BEGIN GENERATED BLOCKS -->
 
-### `hello [NAME]`
+### `parse HTML [TEXT] as document [NAME]`
 
-Returns a localized greeting for the supplied name.
+Parse HTML into a target-local named document tree. This does not sanitize HTML.
+
+| Property | Value |
+|---|---|
+| Type | Command |
+| Opcode | `parseHtml` |
+| `TEXT` | String, default: `<p>Hello</p>` |
+| `NAME` | String, default: `page` |
+
+### `parse Markdown [TEXT] as document [NAME]`
+
+Parse Markdown into a target-local named syntax tree.
+
+| Property | Value |
+|---|---|
+| Type | Command |
+| Opcode | `parseMarkdown` |
+| `TEXT` | String, default: `# Hello` |
+| `NAME` | String, default: `page` |
+
+### `document [NAME] exists?`
+
+Report whether the current target has the named document.
+
+| Property | Value |
+|---|---|
+| Type | Boolean |
+| Opcode | `hasDocument` |
+| `NAME` | String, default: `page` |
+
+### `delete document [NAME]`
+
+Delete the named document from the current target.
+
+| Property | Value |
+|---|---|
+| Type | Command |
+| Opcode | `deleteDocument` |
+| `NAME` | String, default: `page` |
+
+### `kind of document [NAME]`
+
+Return html or markdown.
 
 | Property | Value |
 |---|---|
 | Type | Reporter |
-| Opcode | `hello` |
-| `NAME` | String, default: `world` |
+| Opcode | `documentKind` |
+| `NAME` | String, default: `page` |
+
+### `text in document [NAME] at [LOCATION]`
+
+Get text at the root, a numeric tree path, or a simple HTML selector.
+
+| Property | Value |
+|---|---|
+| Type | Reporter |
+| Opcode | `getDocumentText` |
+| `NAME` | String, default: `page` |
+| `LOCATION` | String, default: `$` |
+
+### `replace text in document [NAME] at [LOCATION] with [TEXT]`
+
+Immutably replace text at the selected node.
+
+| Property | Value |
+|---|---|
+| Type | Command |
+| Opcode | `replaceDocumentText` |
+| `NAME` | String, default: `page` |
+| `LOCATION` | String, default: `$` |
+| `TEXT` | String, default: `Hello` |
+
+### `serialize document [NAME] as [FORMAT]`
+
+Deterministically serialize a document in its native format. Cross-format conversion is rejected as lossy.
+
+| Property | Value |
+|---|---|
+| Type | Reporter |
+| Opcode | `serializeDocument` |
+| `NAME` | String, default: `page` |
+| `FORMAT` | String, default: `html` |
 
 <!-- END GENERATED BLOCKS -->
 
-## Important behavior
+## Named Data provider
 
-```text
-TypeScript source
-  -> Vite
-  -> vite-plugin-turbowarp-extension
-  -> dist/<extension-name>.js
-
-Extension config + block definitions
-  -> extension manifest plugin
-  -> dist/extension-manifest.json
-```
-
-The generated JavaScript is a single, non-minified TurboWarp extension file with Extension Gallery metadata and the standard `(function (Scratch) { ... })(Scratch);` wrapper.
-
-Each build emits `dist/extension-manifest.json` with `formatVersion: 1`. It records the extension ID, block opcodes and types, argument IDs and types, and menu references in a deterministic order. Tools such as `sb3-toolchain` can compare this contract before updating an embedded extension or migrating its ID. See [the architecture document](docs/architecture.md) and the [JSON Schema](schemas/extension-manifest.schema.json) for the v1 contract.
-
-## Compatibility
-
-The canonical README is `README.md`. Japanese documentation uses `README.ja.md`; new repositories should not create `README_ja.md`.
-
-Repository-level differences belong in `repo-policy.json`. Use policy exceptions for upstream forks, mixed-license content, legacy package names, or third-party bundles instead of weakening checks silently.
+When the MVP is enabled, the provider is registered with the runtime registry using persistent lifetime. `PROJECT_STOP_ALL` clears target bindings and open session handles while keeping the provider registered. The provider exposes namespace `document`, kind `document`, target scope, opaque revisions, replayable byte bodies, and the shared `NAMED_DATA_*` error vocabulary. Only a document's native representation is accepted: HTML as `text/html; charset=utf-8`, Markdown as `text/markdown; charset=utf-8`.
 
 ## Development
 
-```bash
-pnpm run check
-```
-
-The check runs type checking, linting, tests, generated README validation, `dist/` reproducibility, repository policy validation, and an npm package dry run.
-
-## Release
-
-Keep `package.json` as the version source of truth. Before publishing, run:
-
-```bash
-pnpm run check
-npm pack --dry-run --ignore-scripts
-```
-
-Release artifacts include `dist/example-extension.js`, `dist/extension-manifest.json`, `README.md`, `README.ja.md`, and `LICENSE`.
+Run `pnpm run check`.
 
 ## License
 
-SPDX-License-Identifier: MPL-2.0
+MPL-2.0. See `THIRD_PARTY_NOTICES.md` for bundled MIT-licensed dependencies.

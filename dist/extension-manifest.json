@@ -1,9 +1,19 @@
 {
   "formatVersion": 1,
-  "id": "kubohiroyaexampleextension",
+  "id": "kubohiroyadocumentdata",
   "blocks": [
     {
-      "opcode": "hello",
+      "opcode": "deleteDocument",
+      "blockType": "COMMAND",
+      "arguments": [
+        {
+          "id": "NAME",
+          "type": "STRING"
+        }
+      ]
+    },
+    {
+      "opcode": "documentKind",
       "blockType": "REPORTER",
       "arguments": [
         {
@@ -11,7 +21,97 @@
           "type": "STRING"
         }
       ]
+    },
+    {
+      "opcode": "getDocumentText",
+      "blockType": "REPORTER",
+      "arguments": [
+        {
+          "id": "LOCATION",
+          "type": "STRING"
+        },
+        {
+          "id": "NAME",
+          "type": "STRING"
+        }
+      ]
+    },
+    {
+      "opcode": "hasDocument",
+      "blockType": "BOOLEAN",
+      "arguments": [
+        {
+          "id": "NAME",
+          "type": "STRING"
+        }
+      ]
+    },
+    {
+      "opcode": "parseHtml",
+      "blockType": "COMMAND",
+      "arguments": [
+        {
+          "id": "NAME",
+          "type": "STRING"
+        },
+        {
+          "id": "TEXT",
+          "type": "STRING"
+        }
+      ]
+    },
+    {
+      "opcode": "parseMarkdown",
+      "blockType": "COMMAND",
+      "arguments": [
+        {
+          "id": "NAME",
+          "type": "STRING"
+        },
+        {
+          "id": "TEXT",
+          "type": "STRING"
+        }
+      ]
+    },
+    {
+      "opcode": "replaceDocumentText",
+      "blockType": "COMMAND",
+      "arguments": [
+        {
+          "id": "LOCATION",
+          "type": "STRING"
+        },
+        {
+          "id": "NAME",
+          "type": "STRING"
+        },
+        {
+          "id": "TEXT",
+          "type": "STRING"
+        }
+      ]
+    },
+    {
+      "opcode": "serializeDocument",
+      "blockType": "REPORTER",
+      "arguments": [
+        {
+          "id": "FORMAT",
+          "type": "STRING",
+          "menu": "documentFormat"
+        },
+        {
+          "id": "NAME",
+          "type": "STRING"
+        }
+      ]
     }
   ],
-  "menus": []
+  "menus": [
+    {
+      "id": "documentFormat",
+      "acceptReporters": true
+    }
+  ]
 }

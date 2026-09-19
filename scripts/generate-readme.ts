@@ -37,7 +37,7 @@ if (!readme.includes(START) || !readme.includes(END)) {
 
 const next = readme.replace(
   new RegExp(`${escapeRegExp(START)}[\\s\\S]*?${escapeRegExp(END)}`),
-  replacement
+  () => replacement
 );
 await writeFile(readmeUrl, next);
 
