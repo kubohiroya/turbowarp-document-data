@@ -37,8 +37,8 @@ describe('DocumentNamedDataProvider', () => {
   it('uses the canonical error vocabulary', () => {
     expect(NAMED_DATA_ERROR_CODES).toEqual([
       'NAMED_DATA_INVALID_REF',
-      'NAMED_DATA_INCOMPATIBLE_VERSION',
-      'NAMED_DATA_NAMESPACE_CONFLICT',
+      'NAMED_DATA_INVALID_REGISTRY',
+      'NAMED_DATA_PROVIDER_CONFLICT',
       'NAMED_DATA_PROVIDER_NOT_FOUND',
       'NAMED_DATA_NOT_FOUND',
       'NAMED_DATA_KIND_MISMATCH',
