@@ -123,3 +123,5 @@ Run `pnpm run check`.
 ## License
 
 MPL-2.0. See `THIRD_PARTY_NOTICES.md` for bundled MIT-licensed dependencies.
+
+固定入力の編集範囲・互換性・切戻しについては [固定入力の編集](docs/fixed-input-editors.ja.md) を参照してください。

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kubohiroya.github.io/turbowarp-document-data/schemas/block-editor-fixed-inputs.schema.json",
+  "$defs": {
+    "serializeDocument": {
+      "type": "object",
+      "properties": {
+        "FORMAT": {
+          "type": "string",
+          "enum": [
+            "html",
+            "markdown"
+          ]
+        }
+      },
+      "required": [
+        "FORMAT"
+      ],
+      "additionalProperties": true
+    }
+  }
+}
