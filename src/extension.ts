@@ -1,3 +1,4 @@
+import {fixedInputRegistration} from './fixed-input-editors.js';
 import definitions from './block-definitions.json';
 import {extensionConfig, isDocumentDataMvpEnabled} from './config.js';
 import {
@@ -20,6 +21,8 @@ interface MenuDefinition {acceptReporters: boolean; items: string[]}
 const blockDefinitions = definitions.blocks as readonly BlockDefinition[];
 
 export class DocumentDataExtension implements TurboWarpExtension {
+  private readonly fixedInputs = fixedInputRegistration(typeof Scratch === 'undefined' ? undefined : Scratch);
+
   private registries = new WeakMap<object, Map<string, DocumentBinding>>();
   private nextRevision = 1;
   private readonly provider?: DocumentNamedDataProvider;
@@ -58,11 +61,13 @@ export class DocumentDataExtension implements TurboWarpExtension {
     return this.namedDataRegistry;
   }
   public async dispose(): Promise<void> {
+    this.fixedInputs.dispose();
     await this.namedDataRegistration?.unregister();
     this.unbindNamedDataRegistryLifecycle?.();
   }
 
   public getInfo(): Record<string, unknown> {
+    this.fixedInputs.ensure(this.enabled ? blockDefinitions.map(block => `${extensionConfig.id}_${block.opcode}`) : []);
     return {
       id: extensionConfig.id,
       name: Scratch.translate(definitions.extensionName),

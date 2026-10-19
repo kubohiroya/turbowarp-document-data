@@ -1,6 +1,6 @@
 {
   "name": "@kubohiroya/turbowarp-document-data",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Named HTML and Markdown document trees for TurboWarp and HTTP response bodies.",
   "author": "Hiroya Kubo <hiroya@cuc.ac.jp>",
   "license": "MPL-2.0",
@@ -30,14 +30,15 @@
     "README.md",
     "README.ja.md",
     "LICENSE",
-    "THIRD_PARTY_NOTICES.md"
+    "THIRD_PARTY_NOTICES.md",
+    "schemas/"
   ],
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "peerDependencies": {
-    "@kubohiroya/turbowarp-named-data": ">=0.1.0 <1"
+    "@kubohiroya/turbowarp-named-data": "0.3.1"
   },
   "packageManager": "pnpm@11.11.0",
   "engines": {
@@ -59,9 +60,9 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
-    "@kubohiroya/turbowarp-extension-manifest": "0.2.0",
-    "@kubohiroya/turbowarp-named-data": "0.1.0",
-    "@kubohiroya/vite-plugin-turbowarp-extension": "0.3.0",
+    "@kubohiroya/turbowarp-extension-manifest": "0.3.2",
+    "@kubohiroya/turbowarp-named-data": "0.3.1",
+    "@kubohiroya/vite-plugin-turbowarp-extension": "0.6.1",
     "@types/mdast": "^4.0.4",
     "@types/node": "^24.13.3",
     "eslint": "^9.39.5",
@@ -69,11 +70,18 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.66.0",
     "vite": "^8.2.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.0",
+    "@kubohiroya/turbowarp-extension-data-editor": "0.2.1"
   },
   "dependencies": {
     "mdast-util-from-markdown": "^2.0.3",
     "mdast-util-to-markdown": "^2.1.2",
     "parse5": "^8.0.1"
+  },
+  "gitHead": "d1b34cb87df3ee0630f5fea7ff7fbe8f7f3f7ae3",
+  "x-turbowarp-source": {
+    "revision": "d1b34cb87df3ee0630f5fea7ff7fbe8f7f3f7ae3",
+    "revisionRole": "base-commit",
+    "sourceState": "local-release-overlay"
   }
 }

@@ -18,7 +18,7 @@ This extension does **not** sanitize HTML, execute scripts, mount a browser DOM,
 - Parse and edit operations replace a binding only after the complete new tree passes validation.
 - Bindings and open body handles are released on `PROJECT_STOP_ALL`.
 
-Build with `pnpm run build`, then load `dist/document-data.js`. Package example: `@kubohiroya/turbowarp-document-data@0.1.0`.
+Build with `pnpm run build`, then load `dist/document-data.js`. Package example: `@kubohiroya/turbowarp-document-data@0.1.1`.
 
 ## Block reference
 
@@ -123,3 +123,5 @@ Run `pnpm run check`.
 ## License
 
 MPL-2.0. See `THIRD_PARTY_NOTICES.md` for bundled MIT-licensed dependencies.
+
+固定入力の編集範囲・互換性・切戻しについては [固定入力の編集](docs/fixed-input-editors.ja.md) を参照してください。

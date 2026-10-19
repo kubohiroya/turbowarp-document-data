@@ -1,0 +1,182 @@
+[
+  {
+    "id": "native-default",
+    "values": {
+      "enabled": false
+    },
+    "getInfo": {
+      "id": "kubohiroyadocumentdata",
+      "name": "Document Data",
+      "docsURI": "https://kubohiroya.github.io/turbowarp-document-data/",
+      "blockIconURI": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3QgeD0iNCIgeT0iOCIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE0IiByeD0iMyIgZmlsbD0iIzRDOTdGRiIvPjxyZWN0IHg9IjI2IiB5PSI4IiB3aWR0aD0iMTgiIGhlaWdodD0iMTQiIHJ4PSIzIiBmaWxsPSIjNTlDMDU5Ii8+PHJlY3QgeD0iMTUiIHk9IjI2IiB3aWR0aD0iMTgiIGhlaWdodD0iMTQiIHJ4PSIzIiBmaWxsPSIjRkZBQjE5Ii8+PC9zdmc+",
+      "blocks": [],
+      "menus": {
+        "documentFormat": {
+          "acceptReporters": true,
+          "items": [
+            "html",
+            "markdown"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "id": "all-owner-features-enabled",
+    "values": {
+      "enabled": true
+    },
+    "getInfo": {
+      "id": "kubohiroyadocumentdata",
+      "name": "Document Data",
+      "docsURI": "https://kubohiroya.github.io/turbowarp-document-data/",
+      "blockIconURI": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3QgeD0iNCIgeT0iOCIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE0IiByeD0iMyIgZmlsbD0iIzRDOTdGRiIvPjxyZWN0IHg9IjI2IiB5PSI4IiB3aWR0aD0iMTgiIGhlaWdodD0iMTQiIHJ4PSIzIiBmaWxsPSIjNTlDMDU5Ii8+PHJlY3QgeD0iMTUiIHk9IjI2IiB3aWR0aD0iMTgiIGhlaWdodD0iMTQiIHJ4PSIzIiBmaWxsPSIjRkZBQjE5Ii8+PC9zdmc+",
+      "blocks": [
+        {
+          "opcode": "parseHtml",
+          "blockType": "command",
+          "text": "parse HTML [TEXT] as document [NAME]",
+          "arguments": {
+            "TEXT": {
+              "type": "string",
+              "defaultValue": "<p>Hello</p>"
+            },
+            "NAME": {
+              "type": "string",
+              "defaultValue": "page"
+            }
+          }
+        },
+        {
+          "opcode": "parseMarkdown",
+          "blockType": "command",
+          "text": "parse Markdown [TEXT] as document [NAME]",
+          "arguments": {
+            "TEXT": {
+              "type": "string",
+              "defaultValue": "# Hello"
+            },
+            "NAME": {
+              "type": "string",
+              "defaultValue": "page"
+            }
+          }
+        },
+        {
+          "opcode": "hasDocument",
+          "blockType": "Boolean",
+          "text": "document [NAME] exists?",
+          "arguments": {
+            "NAME": {
+              "type": "string",
+              "defaultValue": "page"
+            }
+          }
+        },
+        {
+          "opcode": "deleteDocument",
+          "blockType": "command",
+          "text": "delete document [NAME]",
+          "arguments": {
+            "NAME": {
+              "type": "string",
+              "defaultValue": "page"
+            }
+          }
+        },
+        {
+          "opcode": "documentKind",
+          "blockType": "reporter",
+          "text": "kind of document [NAME]",
+          "arguments": {
+            "NAME": {
+              "type": "string",
+              "defaultValue": "page"
+            }
+          }
+        },
+        {
+          "opcode": "getDocumentText",
+          "blockType": "reporter",
+          "text": "text in document [NAME] at [LOCATION]",
+          "arguments": {
+            "NAME": {
+              "type": "string",
+              "defaultValue": "page"
+            },
+            "LOCATION": {
+              "type": "string",
+              "defaultValue": "$"
+            }
+          }
+        },
+        {
+          "opcode": "replaceDocumentText",
+          "blockType": "command",
+          "text": "replace text in document [NAME] at [LOCATION] with [TEXT]",
+          "arguments": {
+            "NAME": {
+              "type": "string",
+              "defaultValue": "page"
+            },
+            "LOCATION": {
+              "type": "string",
+              "defaultValue": "$"
+            },
+            "TEXT": {
+              "type": "string",
+              "defaultValue": "Hello"
+            }
+          }
+        },
+        {
+          "opcode": "serializeDocument",
+          "blockType": "reporter",
+          "text": "serialize document [NAME] as [FORMAT]",
+          "arguments": {
+            "NAME": {
+              "type": "string",
+              "defaultValue": "page"
+            },
+            "FORMAT": {
+              "type": "string",
+              "defaultValue": "html",
+              "menu": "documentFormat"
+            }
+          }
+        }
+      ],
+      "menus": {
+        "documentFormat": {
+          "acceptReporters": true,
+          "items": [
+            "html",
+            "markdown"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "id": "all-owner-features-disabled",
+    "values": {
+      "enabled": false
+    },
+    "getInfo": {
+      "id": "kubohiroyadocumentdata",
+      "name": "Document Data",
+      "docsURI": "https://kubohiroya.github.io/turbowarp-document-data/",
+      "blockIconURI": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3QgeD0iNCIgeT0iOCIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE0IiByeD0iMyIgZmlsbD0iIzRDOTdGRiIvPjxyZWN0IHg9IjI2IiB5PSI4IiB3aWR0aD0iMTgiIGhlaWdodD0iMTQiIHJ4PSIzIiBmaWxsPSIjNTlDMDU5Ii8+PHJlY3QgeD0iMTUiIHk9IjI2IiB3aWR0aD0iMTgiIGhlaWdodD0iMTQiIHJ4PSIzIiBmaWxsPSIjRkZBQjE5Ii8+PC9zdmc+",
+      "blocks": [],
+      "menus": {
+        "documentFormat": {
+          "acceptReporters": true,
+          "items": [
+            "html",
+            "markdown"
+          ]
+        }
+      }
+    }
+  }
+]

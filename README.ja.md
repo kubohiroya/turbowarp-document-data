@@ -31,3 +31,5 @@ providerはpersistent lifetimeでruntime共通registryへ登録されます。`P
 ## License
 
 MPL-2.0。bundle内の依存packageは`THIRD_PARTY_NOTICES.md`を参照してください。
+
+固定入力の編集範囲・互換性・切戻しについては [固定入力の編集](docs/fixed-input-editors.ja.md) を参照してください。
