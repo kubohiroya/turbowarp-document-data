@@ -34,7 +34,7 @@
   	blockIconURI: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3QgeD0iNCIgeT0iOCIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE0IiByeD0iMyIgZmlsbD0iIzRDOTdGRiIvPjxyZWN0IHg9IjI2IiB5PSI4IiB3aWR0aD0iMTgiIGhlaWdodD0iMTQiIHJ4PSIzIiBmaWxsPSIjNTlDMDU5Ii8+PHJlY3QgeD0iMTUiIHk9IjI2IiB3aWR0aD0iMTgiIGhlaWdodD0iMTQiIHJ4PSIzIiBmaWxsPSIjRkZBQjE5Ii8+PC9zdmc+"
   };
   //#endregion
-  //#region node_modules/.pnpm/@kubohiroya+turbowarp-extension-data-editor@https+++codeload.github.com+kubohiroya+turb_5174995e0659a2991b0bf213cfddbf18/node_modules/@kubohiroya/turbowarp-extension-data-editor/dist/fixed-input-schema.js
+  //#region node_modules/.pnpm/@kubohiroya+turbowarp-extension-data-editor@0.2.1_react@18.3.1/node_modules/@kubohiroya/turbowarp-extension-data-editor/dist/fixed-input-schema.js
   var numberToken = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/u;
   var invalidNumber = Object.freeze({
   	kind: "invalid",
@@ -18939,7 +18939,7 @@
   	return error instanceof Error ? error.message : fallback;
   }
   //#endregion
-  //#region node_modules/.pnpm/@kubohiroya+turbowarp-named-data@0.1.0/node_modules/@kubohiroya/turbowarp-named-data/dist/composition.js
+  //#region node_modules/.pnpm/@kubohiroya+turbowarp-named-data@0.3.1/node_modules/@kubohiroya/turbowarp-named-data/dist/composition.js
   var NAMED_DATA_REGISTRY_SYMBOL_KEY = "@kubohiroya/turbowarp-named-data/registry";
   var NAMED_DATA_REGISTRY_SYMBOL = Symbol.for(NAMED_DATA_REGISTRY_SYMBOL_KEY);
   var NAMED_DATA_NAMESPACE_PATTERN = /^[a-z][a-z0-9.-]{0,63}$/u;
@@ -18960,6 +18960,8 @@
   	"markdown",
   	"raw"
   ];
+  var NAMED_DATA_SCHEMA_ID_PATTERN = /^[a-z][a-z0-9.-]{0,127}$/u;
+  var NAMED_DATA_SCHEMA_VERSION_PATTERN = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/u;
   var NAMED_DATA_ERROR_CODES = [
   	"NAMED_DATA_INVALID_REF",
   	"NAMED_DATA_INVALID_REGISTRY",
@@ -18968,6 +18970,9 @@
   	"NAMED_DATA_NOT_FOUND",
   	"NAMED_DATA_KIND_MISMATCH",
   	"NAMED_DATA_SCOPE_MISMATCH",
+  	"NAMED_DATA_SCHEMA_NOT_FOUND",
+  	"NAMED_DATA_SCHEMA_VERSION_MISMATCH",
+  	"NAMED_DATA_SCHEMA_UNRESOLVED",
   	"NAMED_DATA_REPRESENTATION_UNSUPPORTED",
   	"NAMED_DATA_INVALID_METADATA",
   	"NAMED_DATA_BODY_TOO_LARGE",
@@ -19188,9 +19193,21 @@
   	if (!reference || typeof reference !== "object") throw invalidReference();
   	requireNamespace(reference.namespace);
   	if (typeof reference.name !== "string" || reference.name.length === 0 || reference.name.length > 256 || containsControlCharacter(reference.name) || !NAMED_DATA_KINDS.includes(reference.kind) || !NAMED_DATA_SCOPES.includes(reference.scope) || !NAMED_DATA_REPRESENTATIONS.includes(representation)) throw invalidReference();
+  	if (reference.schemaRef !== void 0) validateSchemaRef(reference.kind, reference.schemaRef);
   }
   function validateMetadata(metadata, reference, representation) {
   	if (metadata.representation !== representation || !isNativeRepresentation(metadata.reference.kind, metadata.nativeRepresentation) || metadata.reference.namespace !== reference.namespace || metadata.reference.name !== reference.name || metadata.reference.kind !== reference.kind || metadata.reference.scope !== reference.scope || typeof metadata.mediaType !== "string" || metadata.mediaType.length === 0 || typeof metadata.revision !== "string" || metadata.revision.length === 0 || typeof metadata.replayable !== "boolean" || metadata.byteLength !== void 0 && (!Number.isSafeInteger(metadata.byteLength) || metadata.byteLength < 0) || metadata.digest !== void 0 && !/^sha256-[A-Za-z0-9_-]+$/u.test(metadata.digest)) throw new NamedDataError("NAMED_DATA_INVALID_METADATA", "Provider returned invalid metadata.");
+  	const expectedSchema = reference.schemaRef;
+  	const actualSchema = metadata.schemaRef;
+  	if (actualSchema !== void 0) validateSchemaRef(metadata.reference.kind, actualSchema, "NAMED_DATA_INVALID_METADATA");
+  	if (metadata.reference.schemaRef !== void 0) validateSchemaRef(metadata.reference.kind, metadata.reference.schemaRef, "NAMED_DATA_INVALID_METADATA");
+  	if (!sameSchemaRef(expectedSchema, actualSchema) || !sameSchemaRef(expectedSchema, metadata.reference.schemaRef)) throw new NamedDataError("NAMED_DATA_SCHEMA_VERSION_MISMATCH", "Provider schemaRef does not match the requested reference.");
+  }
+  function validateSchemaRef(kind, schemaRef, errorCode = "NAMED_DATA_INVALID_REF") {
+  	if (kind !== "structured" || typeof schemaRef !== "object" || schemaRef === null || !NAMED_DATA_SCHEMA_ID_PATTERN.test(String(schemaRef.id ?? "")) || !NAMED_DATA_SCHEMA_VERSION_PATTERN.test(String(schemaRef.version ?? "")) || Object.keys(schemaRef).some((key) => key !== "id" && key !== "version")) throw new NamedDataError(errorCode, "Invalid schemaRef; schema references require a structured value, stable id, and full SemVer version.");
+  }
+  function sameSchemaRef(left, right) {
+  	return left === void 0 ? right === void 0 : right !== void 0 && left.id === right.id && left.version === right.version;
   }
   function isNativeRepresentation(kind, representation) {
   	if (kind === "structured") return representation === "json" || representation === "yaml";
@@ -19227,7 +19244,10 @@
   	const value = globalThis.__TW_NAMED_DATA_FEATURE_FLAGS__?.[name];
   	return value === true || value === "true";
   }
-  Object.freeze({ NAMED_DATA_REGISTRY_MVP: configuredFlag("NAMED_DATA_REGISTRY_MVP") });
+  Object.freeze({
+  	NAMED_DATA_REGISTRY_MVP: configuredFlag("NAMED_DATA_REGISTRY_MVP"),
+  	NAMED_DATA_SCHEMA_REF: configuredFlag("NAMED_DATA_SCHEMA_REF")
+  });
   //#endregion
   //#region src/document-provider.ts
   var DOCUMENT_DATA_NAMESPACE = "document";
