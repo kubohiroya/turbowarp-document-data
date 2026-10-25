@@ -34,7 +34,7 @@
   	blockIconURI: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3QgeD0iNCIgeT0iOCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iIzhBNTVENyIvPjxwYXRoIGQ9Ik0xNyAxNGg5bDYgNnYxNGEyIDIgMCAwIDEtMiAySDE3YTIgMiAwIDAgMS0yLTJWMTZhMiAyIDAgMCAxIDItMnoiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMjYgMTR2Nmg2IiBmaWxsPSIjOEE1NUQ3Ii8+PHBhdGggZD0iTTE5IDI3aDEwTTE5IDMyaDciIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzhBNTVENyIgc3Ryb2tlLXdpZHRoPSIyLjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg=="
   };
   //#endregion
-  //#region node_modules/.pnpm/@kubohiroya+turbowarp-extension-data-editor@0.2.1_react@18.3.1/node_modules/@kubohiroya/turbowarp-extension-data-editor/dist/fixed-input-schema.js
+  //#region node_modules/.pnpm/@kubohiroya+turbowarp-extension-data-editor@0.3.3_react@18.3.1/node_modules/@kubohiroya/turbowarp-extension-data-editor/dist/fixed-input-schema.js
   var numberToken = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/u;
   var invalidNumber = Object.freeze({
   	kind: "invalid",
