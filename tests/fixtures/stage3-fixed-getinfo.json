@@ -8,7 +8,7 @@
       "id": "kubohiroyadocumentdata",
       "name": "Document Data",
       "docsURI": "https://kubohiroya.github.io/turbowarp-document-data/",
-      "blockIconURI": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3QgeD0iNCIgeT0iOCIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE0IiByeD0iMyIgZmlsbD0iIzRDOTdGRiIvPjxyZWN0IHg9IjI2IiB5PSI4IiB3aWR0aD0iMTgiIGhlaWdodD0iMTQiIHJ4PSIzIiBmaWxsPSIjNTlDMDU5Ii8+PHJlY3QgeD0iMTUiIHk9IjI2IiB3aWR0aD0iMTgiIGhlaWdodD0iMTQiIHJ4PSIzIiBmaWxsPSIjRkZBQjE5Ii8+PC9zdmc+",
+      "blockIconURI": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3QgeD0iNCIgeT0iOCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iIzhBNTVENyIvPjxwYXRoIGQ9Ik0xNyAxNGg5bDYgNnYxNGEyIDIgMCAwIDEtMiAySDE3YTIgMiAwIDAgMS0yLTJWMTZhMiAyIDAgMCAxIDItMnoiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMjYgMTR2Nmg2IiBmaWxsPSIjOEE1NUQ3Ii8+PHBhdGggZD0iTTE5IDI3aDEwTTE5IDMyaDciIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzhBNTVENyIgc3Ryb2tlLXdpZHRoPSIyLjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==",
       "blocks": [],
       "menus": {
         "documentFormat": {
@@ -30,7 +30,7 @@
       "id": "kubohiroyadocumentdata",
       "name": "Document Data",
       "docsURI": "https://kubohiroya.github.io/turbowarp-document-data/",
-      "blockIconURI": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3QgeD0iNCIgeT0iOCIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE0IiByeD0iMyIgZmlsbD0iIzRDOTdGRiIvPjxyZWN0IHg9IjI2IiB5PSI4IiB3aWR0aD0iMTgiIGhlaWdodD0iMTQiIHJ4PSIzIiBmaWxsPSIjNTlDMDU5Ii8+PHJlY3QgeD0iMTUiIHk9IjI2IiB3aWR0aD0iMTgiIGhlaWdodD0iMTQiIHJ4PSIzIiBmaWxsPSIjRkZBQjE5Ii8+PC9zdmc+",
+      "blockIconURI": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3QgeD0iNCIgeT0iOCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iIzhBNTVENyIvPjxwYXRoIGQ9Ik0xNyAxNGg5bDYgNnYxNGEyIDIgMCAwIDEtMiAySDE3YTIgMiAwIDAgMS0yLTJWMTZhMiAyIDAgMCAxIDItMnoiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMjYgMTR2Nmg2IiBmaWxsPSIjOEE1NUQ3Ii8+PHBhdGggZD0iTTE5IDI3aDEwTTE5IDMyaDciIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzhBNTVENyIgc3Ryb2tlLXdpZHRoPSIyLjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==",
       "blocks": [
         {
           "opcode": "parseHtml",
@@ -166,7 +166,7 @@
       "id": "kubohiroyadocumentdata",
       "name": "Document Data",
       "docsURI": "https://kubohiroya.github.io/turbowarp-document-data/",
-      "blockIconURI": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3QgeD0iNCIgeT0iOCIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE0IiByeD0iMyIgZmlsbD0iIzRDOTdGRiIvPjxyZWN0IHg9IjI2IiB5PSI4IiB3aWR0aD0iMTgiIGhlaWdodD0iMTQiIHJ4PSIzIiBmaWxsPSIjNTlDMDU5Ii8+PHJlY3QgeD0iMTUiIHk9IjI2IiB3aWR0aD0iMTgiIGhlaWdodD0iMTQiIHJ4PSIzIiBmaWxsPSIjRkZBQjE5Ii8+PC9zdmc+",
+      "blockIconURI": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3QgeD0iNCIgeT0iOCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iIzhBNTVENyIvPjxwYXRoIGQ9Ik0xNyAxNGg5bDYgNnYxNGEyIDIgMCAwIDEtMiAySDE3YTIgMiAwIDAgMS0yLTJWMTZhMiAyIDAgMCAxIDItMnoiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMjYgMTR2Nmg2IiBmaWxsPSIjOEE1NUQ3Ii8+PHBhdGggZD0iTTE5IDI3aDEwTTE5IDMyaDciIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzhBNTVENyIgc3Ryb2tlLXdpZHRoPSIyLjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==",
       "blocks": [],
       "menus": {
         "documentFormat": {
