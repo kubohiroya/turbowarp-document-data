@@ -41,9 +41,9 @@
   "peerDependencies": {
     "@kubohiroya/turbowarp-named-data": "^0.5.0"
   },
-  "packageManager": "pnpm@11.11.0",
+  "packageManager": "pnpm@11.28.8",
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "vite build --watch",
