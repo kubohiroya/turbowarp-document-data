@@ -1,0 +1,305 @@
+{
+  "targets": [
+    {
+      "isStage": true,
+      "name": "Stage",
+      "variables": {
+        "sample-state": [
+          "Sample state",
+          ""
+        ],
+        "html": [
+          "Serialized HTML",
+          ""
+        ],
+        "sample-document-text": [
+          "Document text",
+          ""
+        ]
+      },
+      "lists": {},
+      "broadcasts": {},
+      "blocks": {
+        "b1": {
+          "opcode": "event_whenflagclicked",
+          "parent": null,
+          "next": "b2",
+          "inputs": {},
+          "fields": {},
+          "shadow": false,
+          "topLevel": true,
+          "x": 35,
+          "y": 35
+        },
+        "b2": {
+          "opcode": "data_setvariableto",
+          "parent": "b1",
+          "next": "b3",
+          "inputs": {
+            "VALUE": [
+              1,
+              [
+                10,
+                "Running"
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "Sample state",
+              "sample-state"
+            ]
+          },
+          "shadow": false,
+          "topLevel": false
+        },
+        "b3": {
+          "opcode": "kubohiroyadocumentdata_parseHtml",
+          "parent": "b2",
+          "next": "b4",
+          "inputs": {
+            "TEXT": [
+              1,
+              [
+                10,
+                "<p>Hello</p>"
+              ]
+            ],
+            "NAME": [
+              1,
+              [
+                10,
+                "sample-page"
+              ]
+            ]
+          },
+          "fields": {},
+          "shadow": false,
+          "topLevel": false
+        },
+        "b4": {
+          "opcode": "kubohiroyadocumentdata_replaceDocumentText",
+          "parent": "b3",
+          "next": "b5",
+          "inputs": {
+            "NAME": [
+              1,
+              [
+                10,
+                "sample-page"
+              ]
+            ],
+            "LOCATION": [
+              1,
+              [
+                10,
+                "p"
+              ]
+            ],
+            "TEXT": [
+              1,
+              [
+                10,
+                "Hello TurboWarp"
+              ]
+            ]
+          },
+          "fields": {},
+          "shadow": false,
+          "topLevel": false
+        },
+        "b5": {
+          "opcode": "data_setvariableto",
+          "parent": "b4",
+          "next": "b7",
+          "inputs": {
+            "VALUE": [
+              3,
+              "b6",
+              [
+                10,
+                ""
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "Document text",
+              "sample-document-text"
+            ]
+          },
+          "shadow": false,
+          "topLevel": false
+        },
+        "b6": {
+          "opcode": "kubohiroyadocumentdata_getDocumentText",
+          "parent": "b5",
+          "next": null,
+          "inputs": {
+            "NAME": [
+              1,
+              [
+                10,
+                "sample-page"
+              ]
+            ],
+            "LOCATION": [
+              1,
+              [
+                10,
+                "p"
+              ]
+            ]
+          },
+          "fields": {},
+          "shadow": false,
+          "topLevel": false
+        },
+        "b7": {
+          "opcode": "data_setvariableto",
+          "parent": "b5",
+          "next": "b10",
+          "inputs": {
+            "VALUE": [
+              3,
+              "b8",
+              [
+                10,
+                ""
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "Serialized HTML",
+              "html"
+            ]
+          },
+          "shadow": false,
+          "topLevel": false
+        },
+        "b8": {
+          "opcode": "kubohiroyadocumentdata_serializeDocument",
+          "parent": "b7",
+          "next": null,
+          "inputs": {
+            "NAME": [
+              1,
+              [
+                10,
+                "sample-page"
+              ]
+            ],
+            "FORMAT": [
+              1,
+              "b9"
+            ]
+          },
+          "fields": {},
+          "shadow": false,
+          "topLevel": false
+        },
+        "b9": {
+          "opcode": "kubohiroyadocumentdata_menu_documentFormat",
+          "parent": "b8",
+          "next": null,
+          "inputs": {},
+          "fields": {
+            "documentFormat": [
+              "html",
+              null
+            ]
+          },
+          "shadow": true,
+          "topLevel": false
+        },
+        "b10": {
+          "opcode": "data_setvariableto",
+          "parent": "b7",
+          "next": null,
+          "inputs": {
+            "VALUE": [
+              1,
+              [
+                10,
+                "Ready"
+              ]
+            ]
+          },
+          "fields": {
+            "VARIABLE": [
+              "Sample state",
+              "sample-state"
+            ]
+          },
+          "shadow": false,
+          "topLevel": false
+        }
+      },
+      "comments": {},
+      "currentCostume": 0,
+      "costumes": [
+        {
+          "assetId": "",
+          "name": "Instructions",
+          "bitmapResolution": 1,
+          "md5ext": "backdrop.svg",
+          "dataFormat": "svg",
+          "rotationCenterX": 240,
+          "rotationCenterY": 180
+        }
+      ],
+      "sounds": [],
+      "volume": 100,
+      "layerOrder": 0,
+      "tempo": 60,
+      "videoTransparency": 50,
+      "videoState": "off",
+      "textToSpeechLanguage": null
+    }
+  ],
+  "monitors": [
+    {
+      "id": "sample-document-text",
+      "mode": "default",
+      "opcode": "data_variable",
+      "params": {
+        "VARIABLE": "Document text"
+      },
+      "spriteName": null,
+      "value": "",
+      "width": 0,
+      "height": 0,
+      "x": 18,
+      "y": 115,
+      "visible": true,
+      "sliderMin": 0,
+      "sliderMax": 100,
+      "isDiscrete": true
+    },
+    {
+      "id": "html",
+      "mode": "default",
+      "opcode": "data_variable",
+      "params": {
+        "VARIABLE": "Serialized HTML"
+      },
+      "spriteName": null,
+      "value": "",
+      "width": 0,
+      "height": 0,
+      "x": 18,
+      "y": 148,
+      "visible": true,
+      "sliderMin": 0,
+      "sliderMax": 100,
+      "isDiscrete": true
+    }
+  ],
+  "extensions": [],
+  "meta": {
+    "semver": "3.0.0",
+    "vm": "0.2.0",
+    "agent": "TurboWarp Plus minimal samples"
+  }
+}

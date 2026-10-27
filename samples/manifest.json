@@ -1,0 +1,28 @@
+{
+  "baseURL": "https://kubohiroya.github.io/turbowarp-document-data/",
+  "extension": {
+    "id": "kubohiroyadocumentdata",
+    "bundle": "dist/document-data.js",
+    "unsandboxed": true,
+    "startupFlags": {
+      "DOCUMENT_DATA_MVP": true
+    }
+  },
+  "samples": [
+    {
+      "name": "replace-document-text",
+      "title": "Document Data minimal demo",
+      "checks": [
+        {
+          "variable": "sample-document-text",
+          "equals": "Hello TurboWarp"
+        },
+        {
+          "variable": "html",
+          "contains": "<p>Hello TurboWarp</p>"
+        }
+      ],
+      "instructions": "The paragraph becomes Hello TurboWarp in text and HTML."
+    }
+  ]
+}
