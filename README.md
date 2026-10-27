@@ -6,6 +6,18 @@ English | [日本語](README.ja.md)
 
 Named, target-local HTML and Markdown document trees for TurboWarp. This package was initialized from `turbowarp-extension-template` and integrates with the canonical `@kubohiroya/turbowarp-named-data` registry.
 
+## Runnable sample
+
+[**Open the demo in TurboWarp Editor**](https://turbowarp.org/editor?project_url=https%3A%2F%2Fkubohiroya.github.io%2Fturbowarp-document-data%2Fsamples%2Freplace-document-text.sb3) · [Download the SB3](https://kubohiroya.github.io/turbowarp-document-data/samples/replace-document-text.sb3)
+
+Select **Run without sandbox**, then **Allow**, and click the green flag.
+The paragraph becomes Hello TurboWarp in text and HTML.
+
+This sample enables `DOCUMENT_DATA_MVP` only while creating its extension instance, then restores the host flag. The extension default stays OFF.
+
+Editable sources and expected results: [`samples/README.md`](samples/README.md).
+Run `pnpm run samples:build` after source/bundle changes and `pnpm run samples:check` before committing.
+
 ## What it does
 
 It parses HTML with parse5 and Markdown into mdast, stores the typed tree under a name, supports minimal text inspection/replacement, and deterministically serializes the native format. A Named Data provider exposes UTF-8 HTML or Markdown response bodies without depending on an unpublished shared package.

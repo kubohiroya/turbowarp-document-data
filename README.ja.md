@@ -6,6 +6,17 @@
 
 HTMLとMarkdownをtyped tree/ASTとしてparseし、target-localな名前で保持するTurboWarp機能拡張です。`turbowarp-extension-template`を基に初期化し、canonical `@kubohiroya/turbowarp-named-data` registryへ接続します。
 
+## 実行できるサンプル
+
+[**TurboWarp Editorでデモを開く**](https://turbowarp.org/editor?project_url=https%3A%2F%2Fkubohiroya.github.io%2Fturbowarp-document-data%2Fsamples%2Freplace-document-text.sb3) · [SB3をダウンロード](https://kubohiroya.github.io/turbowarp-document-data/samples/replace-document-text.sb3)
+
+**Run without sandbox**を選んで**Allow**し、緑の旗を押します。
+`parseHtml`で短い文書を登録し、`replaceDocumentText`後の`getDocumentText`・`serializeDocument`を表示。サンプルの元データと期待結果は[`samples/README.md`](samples/README.md)に記載しています。
+
+このサンプルは拡張生成時だけ`DOCUMENT_DATA_MVP`を有効にし、直後にホストの設定を元に戻します。拡張本体の既定OFFは変更しません。
+
+`pnpm run samples:build`でSB3を再生成し、`pnpm run samples:check`で更新漏れと生成処理を確認します。
+
 ## 機能
 
 - HTML / Markdownを名前付きdocumentへparse
