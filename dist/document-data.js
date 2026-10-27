@@ -34,7 +34,7 @@ var extensionConfig = {
 	blockIconURI: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3QgeD0iNCIgeT0iOCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iIzhBNTVENyIvPjxwYXRoIGQ9Ik0xNyAxNGg5bDYgNnYxNGEyIDIgMCAwIDEtMiAySDE3YTIgMiAwIDAgMS0yLTJWMTZhMiAyIDAgMCAxIDItMnoiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMjYgMTR2Nmg2IiBmaWxsPSIjOEE1NUQ3Ii8+PHBhdGggZD0iTTE5IDI3aDEwTTE5IDMyaDciIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzhBNTVENyIgc3Ryb2tlLXdpZHRoPSIyLjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg=="
 };
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-extension-data-editor@0.3.4_react@18.3.1/node_modules/@kubohiroya/turbowarp-extension-data-editor/dist/fixed-input-schema.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-extension-data-editor@0.4.0_react@18.3.1/node_modules/@kubohiroya/turbowarp-extension-data-editor/dist/fixed-input-schema.js
 var numberToken = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/u;
 var invalidNumber = Object.freeze({
 	kind: "invalid",
@@ -936,7 +936,7 @@ function factorySpace(effects, ok, type, max) {
 	}
 }
 //#endregion
-//#region node_modules/.pnpm/micromark@4.0.2/node_modules/micromark/lib/initialize/content.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/initialize/content.js
 /**
 * @import {
 *   InitialConstruct,
@@ -1003,7 +1003,7 @@ function initializeContent(effects) {
 	}
 }
 //#endregion
-//#region node_modules/.pnpm/micromark@4.0.2/node_modules/micromark/lib/initialize/document.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/initialize/document.js
 /**
 * @import {
 *   Construct,
@@ -6853,7 +6853,7 @@ function tokenizeSetextUnderline(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region node_modules/.pnpm/micromark@4.0.2/node_modules/micromark/lib/initialize/flow.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/initialize/flow.js
 /**
 * @import {
 *   InitialConstruct,
@@ -6900,7 +6900,7 @@ function initializeFlow(effects) {
 	}
 }
 //#endregion
-//#region node_modules/.pnpm/micromark@4.0.2/node_modules/micromark/lib/initialize/text.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/initialize/text.js
 /**
 * @import {
 *   Code,
@@ -7077,7 +7077,7 @@ function resolveAllLineSuffixes(events, context) {
 	return events;
 }
 //#endregion
-//#region node_modules/.pnpm/micromark@4.0.2/node_modules/micromark/lib/constructs.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/constructs.js
 /**
 * @import {Extension} from 'micromark-util-types'
 */
@@ -7155,7 +7155,7 @@ var attentionMarkers = { null: [42, 95] };
 /** @satisfies {Extension['disable']} */
 var disable = { null: [] };
 //#endregion
-//#region node_modules/.pnpm/micromark@4.0.2/node_modules/micromark/lib/create-tokenizer.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/create-tokenizer.js
 /**
 * @import {
 *   Chunk,
@@ -7624,7 +7624,7 @@ function serializeChunks(chunks, expandTabs) {
 	return result.join("");
 }
 //#endregion
-//#region node_modules/.pnpm/micromark@4.0.2/node_modules/micromark/lib/parse.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/parse.js
 /**
 * @import {
 *   Create,
@@ -7668,7 +7668,7 @@ function parse(options) {
 	}
 }
 //#endregion
-//#region node_modules/.pnpm/micromark@4.0.2/node_modules/micromark/lib/postprocess.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/postprocess.js
 /**
 * @import {Event} from 'micromark-util-types'
 */
@@ -7683,7 +7683,7 @@ function postprocess(events) {
 	return events;
 }
 //#endregion
-//#region node_modules/.pnpm/micromark@4.0.2/node_modules/micromark/lib/preprocess.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/preprocess.js
 /**
 * @import {Chunk, Code, Encoding, Value} from 'micromark-util-types'
 */
@@ -7885,7 +7885,7 @@ function index(value) {
 	return value && typeof value === "number" ? value : 1;
 }
 //#endregion
-//#region node_modules/.pnpm/mdast-util-from-markdown@2.0.3/node_modules/mdast-util-from-markdown/lib/index.js
+//#region node_modules/.pnpm/mdast-util-from-markdown@2.0.3_supports-color@7.2.0/node_modules/mdast-util-from-markdown/lib/index.js
 /**
 * @import {
 *   Break,
@@ -18939,7 +18939,7 @@ function errorMessage(error, fallback) {
 	return error instanceof Error ? error.message : fallback;
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-named-data@0.5.0/node_modules/@kubohiroya/turbowarp-named-data/dist/composition.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-named-data@0.6.0/node_modules/@kubohiroya/turbowarp-named-data/dist/composition.js
 var NAMED_DATA_REGISTRY_SYMBOL_KEY = "@kubohiroya/turbowarp-named-data/registry";
 var NAMED_DATA_REGISTRY_SYMBOL = Symbol.for(NAMED_DATA_REGISTRY_SYMBOL_KEY);
 var NAMED_DATA_NAMESPACE_PATTERN = /^[a-z][a-z0-9.-]{0,63}$/u;
