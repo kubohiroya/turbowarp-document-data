@@ -8,12 +8,12 @@
           "Sample state",
           ""
         ],
-        "text": [
-          "Document text",
-          ""
-        ],
         "html": [
           "Serialized HTML",
+          ""
+        ],
+        "sample-document-text": [
+          "Document text",
           ""
         ]
       },
@@ -125,7 +125,7 @@
           "fields": {
             "VARIABLE": [
               "Document text",
-              "text"
+              "sample-document-text"
             ]
           },
           "shadow": false,
@@ -260,7 +260,7 @@
   ],
   "monitors": [
     {
-      "id": "text",
+      "id": "sample-document-text",
       "mode": "default",
       "opcode": "data_variable",
       "params": {

@@ -14,7 +14,7 @@
       "title": "Document Data minimal demo",
       "checks": [
         {
-          "variable": "text",
+          "variable": "sample-document-text",
           "equals": "Hello TurboWarp"
         },
         {
