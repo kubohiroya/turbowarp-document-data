@@ -1,11 +1,14 @@
 import {fixedInputRegistration} from './fixed-input-editors.js';
 import definitions from './block-definitions.json';
-import {extensionConfig, isDocumentDataMvpEnabled} from './config.js';
+import {extensionConfig, isDocumentDataMvpEnabled, isDocumentSourceEnabled} from './config.js';
+import {createSourceDocumentStore, createSourceDocumentProvider, type SourceDocumentVM} from './source-documents.js';
+import {getSourceDocumentRegistry, encodeSourceDocumentReference, SourceDocumentError} from './composition.js';
 import {
   DocumentDataError, getDocumentText, parseHtmlDocument, parseMarkdownDocument,
   replaceDocumentText, serializeDocument, type DocumentKind, type DocumentTree
 } from './document.js';
 import {DocumentNamedDataProvider, type DocumentBinding} from './document-provider.js';
+import {SourceDocumentNamedDataProvider} from './source-named-data-provider.js';
 import {
   bindNamedDataRegistryLifecycle,
   installNamedDataRegistry,
@@ -13,24 +16,34 @@ import {
   type NamedDataRegistryService
 } from '@kubohiroya/turbowarp-named-data/composition';
 
-type BlockTypeName = 'COMMAND' | 'REPORTER' | 'BOOLEAN';
+type BlockTypeName = 'COMMAND' | 'REPORTER' | 'BOOLEAN' | 'HAT';
 type ArgumentTypeName = 'STRING';
 interface DefinitionArgument {type: ArgumentTypeName; defaultValue: string; menu?: string}
 interface BlockDefinition {opcode: string; blockType: BlockTypeName; text: string; description: string; arguments: Record<string, DefinitionArgument>}
 interface MenuDefinition {acceptReporters: boolean; items: string[]}
 const blockDefinitions = definitions.blocks as readonly BlockDefinition[];
+const sourceOpcodes = new Set(['createYamlSource', 'createJsonSource', 'hasSourceDocument', 'getSourceDocument', 'sourceDocumentFormat', 'deleteSourceDocument', 'sourceDocument']);
 
 export class DocumentDataExtension implements TurboWarpExtension {
   private readonly fixedInputs = fixedInputRegistration(typeof Scratch === 'undefined' ? undefined : Scratch);
 
+  private readonly sourceStore?: ReturnType<typeof createSourceDocumentStore>;
+  private readonly sourceProvider?: ReturnType<typeof createSourceDocumentProvider>;
+  private readonly unregisterSource?: () => void;
+  private readonly sourceBodyProvider?: SourceDocumentNamedDataProvider;
+  private readonly sourceBodyRegistration?: NamedDataProviderRegistration;
+
   private registries = new WeakMap<object, Map<string, DocumentBinding>>();
   private nextRevision = 1;
+  private disposed = false;
+  private readonly runtime = Scratch.vm?.runtime;
+  private readonly projectReset = () => {this.clearRuntimeState();void this.namedDataRegistry?.clearSession();};
   private readonly provider?: DocumentNamedDataProvider;
   private readonly namedDataRegistry?: NamedDataRegistryService;
   private readonly namedDataRegistration?: NamedDataProviderRegistration;
   private readonly unbindNamedDataRegistryLifecycle?: () => void;
 
-  public constructor(private readonly enabled = isDocumentDataMvpEnabled()) {
+  public constructor(private readonly enabled = isDocumentDataMvpEnabled(), private readonly sourceEnabled = isDocumentSourceEnabled()) {
     const runtime = Scratch.vm?.runtime;
     if (enabled) {
       this.provider = new DocumentNamedDataProvider({
@@ -47,13 +60,27 @@ export class DocumentDataExtension implements TurboWarpExtension {
             runtime as {on(event: string, listener: () => void): void},
             this.namedDataRegistry
           );
-          runtime.on('RUNTIME_DISPOSED', () => {
-            void this.dispose();
-          });
         }
       }
     }
-    runtime?.on?.('PROJECT_STOP_ALL', () => this.clearRuntimeState());
+    if (sourceEnabled) {
+      const vm = Scratch.vm as unknown as SourceDocumentVM;
+      this.sourceStore = createSourceDocumentStore(vm);
+      this.sourceProvider = createSourceDocumentProvider(vm);
+      this.unregisterSource = getSourceDocumentRegistry(vm).register(this.sourceProvider);
+      this.sourceBodyProvider = new SourceDocumentNamedDataProvider(this.sourceStore);
+      if (runtime) {
+        if (!this.namedDataRegistry) {
+          this.namedDataRegistry = installNamedDataRegistry(runtime);
+          if (runtime.on) this.unbindNamedDataRegistryLifecycle = bindNamedDataRegistryLifecycle(runtime as {on(event: string, listener: () => void): void}, this.namedDataRegistry);
+        }
+        this.sourceBodyRegistration = this.namedDataRegistry.registerProvider(this.sourceBodyProvider, {lifetime: 'persistent'});
+      }
+    }
+    runtime?.on?.('PROJECT_STOP_ALL', this.projectReset);
+    // Project replacement reuses the cached extension instance in TurboWarp.
+    runtime?.on?.('RUNTIME_DISPOSED', this.projectReset);
+    runtime?.on?.('PROJECT_LOADED', this.projectReset);
   }
 
   public getNamedDataProvider(): DocumentNamedDataProvider | undefined {return this.provider;}
@@ -61,22 +88,53 @@ export class DocumentDataExtension implements TurboWarpExtension {
     return this.namedDataRegistry;
   }
   public async dispose(): Promise<void> {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.runtime?.off?.('PROJECT_STOP_ALL', this.projectReset);
+    this.runtime?.off?.('RUNTIME_DISPOSED', this.projectReset);
+    this.runtime?.off?.('PROJECT_LOADED', this.projectReset);
+    this.clearRuntimeState();
     this.fixedInputs.dispose();
+    this.unregisterSource?.();
+    this.sourceProvider?.dispose?.();
+    this.sourceStore?.dispose();
     await this.namedDataRegistration?.unregister();
+    await this.sourceBodyRegistration?.unregister();
     this.unbindNamedDataRegistryLifecycle?.();
   }
 
   public getInfo(): Record<string, unknown> {
-    this.fixedInputs.ensure(this.enabled ? blockDefinitions.map(block => `${extensionConfig.id}_${block.opcode}`) : []);
+    const visible = blockDefinitions.filter(block => sourceOpcodes.has(block.opcode) ? this.sourceEnabled : this.enabled);
+    this.fixedInputs.ensure(visible.map(block => `${extensionConfig.id}_${block.opcode}`));
     return {
       id: extensionConfig.id,
       name: Scratch.translate(definitions.extensionName),
       docsURI: extensionConfig.docsURI,
       blockIconURI: extensionConfig.blockIconURI,
-      blocks: this.enabled ? blockDefinitions.map((block) => this.toScratchBlock(block)) : [],
-      menus: Object.fromEntries(Object.entries(definitions.menus).map(([id, menu]) => [id, this.toScratchMenu(menu)]))
+      blocks: visible.map((block) => this.toScratchBlock(block)),
+      menus: {...Object.fromEntries(Object.entries(definitions.menus).filter(([id]) => id !== 'sourceDocuments' || this.sourceEnabled).map(([id, menu]) => [id, this.toScratchMenu(menu)])), ...(this.sourceEnabled ? {sourceDocuments: {acceptReporters: false, items: 'sourceDocumentMenu'}} : {})}
     };
   }
+
+  public sourceDocument(): boolean {return false;}
+  public sourceDocumentMenu(): Array<{text: string; value: string}> {
+    const documents = this.sourceStore?.list() ?? [];
+    return documents.length ? documents.map(document => ({text: document.filename, value: encodeSourceDocumentReference({providerId: 'document-data', documentId: document.id})})) : [{text: '—', value: ''}];
+  }
+  private sources(): ReturnType<typeof createSourceDocumentStore> {
+    if (!this.sourceEnabled || !this.sourceStore) throw new SourceDocumentError('DOCUMENT_SOURCE_DISABLED', 'Persistent source documents are disabled.');
+    return this.sourceStore;
+  }
+  public createYamlSource(args: {TEXT: unknown; NAME: unknown; FILENAME: unknown}): void {
+    this.sources().put({id: this.name(args.NAME), filename: Scratch.Cast.toString(args.FILENAME), format: 'yaml', source: Scratch.Cast.toString(args.TEXT)});
+  }
+  public createJsonSource(args: {TEXT: unknown; NAME: unknown; FILENAME: unknown}): void {
+    this.sources().put({id: this.name(args.NAME), filename: Scratch.Cast.toString(args.FILENAME), format: 'json', source: Scratch.Cast.toString(args.TEXT)});
+  }
+  public hasSourceDocument(args: {NAME: unknown}): boolean {return this.sources().list().some(document => document.id === this.name(args.NAME));}
+  public getSourceDocument(args: {NAME: unknown}): string {return this.sources().read(this.name(args.NAME)).source;}
+  public sourceDocumentFormat(args: {NAME: unknown}): string {return this.sources().read(this.name(args.NAME)).format;}
+  public deleteSourceDocument(args: {NAME: unknown}): void {this.sources().remove(this.name(args.NAME));}
 
   public parseHtml(args: {TEXT: unknown; NAME: unknown}, util: ScratchBlockUtility): void {
     this.setBinding(util.target, this.name(args.NAME), parseHtmlDocument(Scratch.Cast.toString(args.TEXT)));
@@ -128,9 +186,9 @@ export class DocumentDataExtension implements TurboWarpExtension {
     return binding;
   }
   private notFound(name: string): never {throw new DocumentDataError('DOCUMENT_NOT_FOUND', `Document does not exist: ${name}`);}
-  private clearRuntimeState(): void {this.registries = new WeakMap(); this.provider?.clearSession();}
+  private clearRuntimeState(): void {this.registries = new WeakMap(); this.provider?.clearSession();this.sourceBodyProvider?.clearSession();}
   private toScratchBlock(block: BlockDefinition): Record<string, unknown> {
-    return {opcode: block.opcode, blockType: Scratch.BlockType[block.blockType], text: Scratch.translate(block.text), arguments: Object.fromEntries(Object.entries(block.arguments).map(([name, argument]) => [name, {type: Scratch.ArgumentType[argument.type], defaultValue: argument.defaultValue, ...(argument.menu ? {menu: argument.menu} : {})}]))};
+    return {opcode: block.opcode, blockType: Scratch.BlockType[block.blockType], text: Scratch.translate(block.text), ...(block.opcode === 'sourceDocument' ? {isEdgeActivated: false} : {}), arguments: Object.fromEntries(Object.entries(block.arguments).map(([name, argument]) => [name, {type: Scratch.ArgumentType[argument.type], defaultValue: block.opcode === 'sourceDocument' && name === 'DOCUMENT' ? this.sourceDocumentMenu()[0]?.value ?? '' : argument.defaultValue, ...(argument.menu ? {menu: argument.menu} : {})}]))};
   }
   private toScratchMenu(menu: MenuDefinition): Record<string, unknown> {return {acceptReporters: menu.acceptReporters, items: menu.items};}
 }

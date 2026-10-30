@@ -32,7 +32,7 @@ This extension does **not** sanitize HTML, execute scripts, mount a browser DOM,
 - Parse and edit operations replace a binding only after the complete new tree passes validation.
 - Bindings and open body handles are released on `PROJECT_STOP_ALL`.
 
-Build with `pnpm run build`, then load `dist/document-data.js`. Package example: `@kubohiroya/turbowarp-document-data@0.4.0`.
+Build with `pnpm run build`, then load `dist/document-data.js`. Package example: `@kubohiroya/turbowarp-document-data@0.5.0-rc.0`.
 
 ## Block reference
 
@@ -124,6 +124,80 @@ Deterministically serialize a document in its native format. Cross-format conver
 | `NAME` | String, default: `page` |
 | `FORMAT` | String, default: `html` |
 
+### `store YAML [TEXT] as source document [NAME] file [FILENAME]`
+
+Validate YAML and retain its exact source in SB3 extension storage. Enabled by startup DOCUMENT_SOURCE.
+
+| Property | Value |
+|---|---|
+| Type | Command |
+| Opcode | `createYamlSource` |
+| `TEXT` | String, default: `value: example\n` |
+| `NAME` | String, default: `settings` |
+| `FILENAME` | String, default: `settings.yaml` |
+
+### `store JSON [TEXT] as source document [NAME] file [FILENAME]`
+
+Validate JSON and retain its exact source in SB3 extension storage. Enabled by startup DOCUMENT_SOURCE.
+
+| Property | Value |
+|---|---|
+| Type | Command |
+| Opcode | `createJsonSource` |
+| `TEXT` | String, default: `{"value":"example"}` |
+| `NAME` | String, default: `settings` |
+| `FILENAME` | String, default: `settings.json` |
+
+### `source document [NAME] exists?`
+
+Report whether the current project owns a persistent source document.
+
+| Property | Value |
+|---|---|
+| Type | Boolean |
+| Opcode | `hasSourceDocument` |
+| `NAME` | String, default: `settings` |
+
+### `original source of document [NAME]`
+
+Return the original YAML/JSON text including comments and line endings.
+
+| Property | Value |
+|---|---|
+| Type | Reporter |
+| Opcode | `getSourceDocument` |
+| `NAME` | String, default: `settings` |
+
+### `format of source document [NAME]`
+
+Return yaml or json without converting the source.
+
+| Property | Value |
+|---|---|
+| Type | Reporter |
+| Opcode | `sourceDocumentFormat` |
+| `NAME` | String, default: `settings` |
+
+### `delete source document [NAME]`
+
+Remove one persistent source document from the project.
+
+| Property | Value |
+|---|---|
+| Type | Command |
+| Opcode | `deleteSourceDocument` |
+| `NAME` | String, default: `settings` |
+
+### `embedded document [DOCUMENT]`
+
+Inert declaration referring to a persistent source document. It never executes a document.
+
+| Property | Value |
+|---|---|
+| Type | Hat |
+| Opcode | `sourceDocument` |
+| `DOCUMENT` | String, default: `` |
+
 <!-- END GENERATED BLOCKS -->
 
 ## Named Data provider
@@ -139,3 +213,32 @@ Run `pnpm run check`.
 MPL-2.0. See `THIRD_PARTY_NOTICES.md` for bundled MIT-licensed dependencies.
 
 固定入力の編集範囲・互換性・切戻しについては [固定入力の編集](docs/fixed-input-editors.ja.md) を参照してください。
+
+## Persistent YAML/JSON source documents (prerelease opt-in)
+
+`DOCUMENT_SOURCE` is captured when the extension is constructed and defaults to OFF. Set `globalThis.DOCUMENT_SOURCE = true` before loading the extension to expose the new source blocks. `DOCUMENT_DATA_MVP` still independently controls the existing target-local HTML/Markdown trees. Stopping a project clears those transient trees; it retains the canonical YAML/JSON source in `runtime.extensionStorage.kubohiroyadocumentdata`.
+
+The storage has `{formatVersion: 1, documents: {[id]: {id, filename, format, source, revision, schema?, docsURL?}}}`. The owner validates YAML/JSON through the shared `turbowarp-yaml-json/codec`, and optional inline JSON Schema through its explicit Schema API, before changing the raw source. Comments, spacing, CRLF, and Unicode remain exactly as supplied. No parse/render roundtrip is used to save text. Schema metadata uses `{id, schema}`; documentation URLs must be fixed HTTPS URLs without credentials.
+
+`./composition` exports only the canonical `getSourceDocumentRegistry`, provider/reference contracts, and Schema metadata normalization. It imports no YAML/JSON parser, GUI, App, Editor, DOM control, or native launcher. The prior embedded-YAML names are aliases to the same functions. The registry keeps the legacy v1 `Symbol.for` slot and opaque reference encoding, with a `sourceDocumentApiVersion: 1` capability. A real older registry that discards native format metadata is rejected explicitly; it is never silently replaced with a second registry. Reload compatible owner and host bundles together.
+
+`./source-documents` separately exports `createSourceDocumentStore(vm)` and `createSourceDocumentProvider(vm)`. The latter uses provider ID `document-data`; `list()` reports document IDs, filenames, native formats and optional Schema/docs, and `open(id)` returns `inspect/capture/prepare/commit/dispose`. Captures use opaque owner baselines. Project replacement, stale documents, removed documents, and forged prepared results cannot overwrite current source. A normal stop may replace the VM target array without changing the source's project identity.
+
+```js
+import {getSourceDocumentRegistry} from '@kubohiroya/turbowarp-document-data/composition';
+import {createSourceDocumentStore, createSourceDocumentProvider} from '@kubohiroya/turbowarp-document-data/source-documents';
+const store = createSourceDocumentStore(vm);
+store.put({id: 'settings', filename: 'settings.yaml', format: 'yaml', source: '# keep this comment\nvalue: 1\n'});
+const unregister = getSourceDocumentRegistry(vm).register(createSourceDocumentProvider(vm));
+```
+
+The native `sourceDocument` hat refers to a document ID through a nonreporter dropdown and never runs the source. Keep a Document Data block in the project: TurboWarp's normal SB3 serializer retains extension storage for extension IDs used by project blocks. This library does not alter the VM serializer. Source blocks, the ordinary SB3 save, and the provider keep text in the same owner location; no text is duplicated in a hat argument.
+
+The read-only Named Data namespace `document-source`, kind `document`, scope `project`, serves native `yaml` or `json` bytes and revisions. It refuses implicit cross-format conversion. Existing HTML/Markdown `document` namespace behavior is unchanged. The source provider caps one project at 256 documents and 4 MiB of total source; per-document parse limits come from the shared codec. Stop clears body handles without deleting canonical source.
+
+This prerelease implements Issue #21 with an explicit startup opt-in. Roll back by leaving `DOCUMENT_SOURCE` OFF at startup or reverting the integration; retain original SB3 copies. Parsed value/AST and schema-specific block conversion are separate representations and are not silently substituted for raw text by this source layer.
+
+Inline source Schema validation defaults to the explicit 2020-12 profile and selects the draft-07 profile for a declared draft-07 metaschema URI. Other unsupported metaschemas are rejected by the owner validator.
+
+
+Project replacement (`RUNTIME_DISPOSED` followed by `PROJECT_LOADED`) reuses cached extension/store/provider instances. It invalidates old edit captures and clears transient HTML/Markdown/session handles, while persistent registrations remain available for the next project storage. Only explicit `dispose()` permanently unregisters them.

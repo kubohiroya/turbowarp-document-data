@@ -1,3 +1,10 @@
+export const DOCUMENT_SOURCE_DEFAULT = false;
+
+export function isDocumentSourceEnabled(source: {DOCUMENT_SOURCE?: unknown} = globalThis as {DOCUMENT_SOURCE?: unknown}): boolean {
+  const value = source.DOCUMENT_SOURCE;
+  return value === undefined ? DOCUMENT_SOURCE_DEFAULT : value === true || value === 'true';
+}
+
 export const DOCUMENT_DATA_MVP_DEFAULT = false;
 
 export function isDocumentDataMvpEnabled(
