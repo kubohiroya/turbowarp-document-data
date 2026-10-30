@@ -1,6 +1,6 @@
 {
   "name": "@kubohiroya/turbowarp-document-data",
-  "version": "0.5.0-rc.0",
+  "version": "0.5.0-rc.1",
   "description": "Persistent YAML/JSON source documents and HTML/Markdown document trees for TurboWarp.",
   "author": {
     "name": "Hiroya Kubo",

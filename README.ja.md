@@ -65,3 +65,5 @@ Issue #21の未公開ローカル実装です。切戻しは起動時フラグOF
 
 
 作品切替（`RUNTIME_DISPOSED`→`PROJECT_LOADED`）ではキャッシュ済みの拡張・store・providerを再利用します。古い編集captureとHTML/Markdownの一時値・session handleだけを無効化し、次の作品のstorageでも永続登録を利用できます。登録を永久に解除するのは明示的な `dispose()` だけです。
+
+編集済みブロックを正本へ保存しながら同じ表現を保持するproviderは、`fromRepresentations`へ自分のactive kindを明示できます。宣言がない同形式要求はownerを呼ぶ前に拒否し、`fromSource`だけでは許可しません。構文検証・古い状態の拒否・原子的なcommitはownerの責任です。ownerとhostの対応bundleを一緒に更新して再読込してください。

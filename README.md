@@ -32,7 +32,7 @@ This extension does **not** sanitize HTML, execute scripts, mount a browser DOM,
 - Parse and edit operations replace a binding only after the complete new tree passes validation.
 - Bindings and open body handles are released on `PROJECT_STOP_ALL`.
 
-Build with `pnpm run build`, then load `dist/document-data.js`. Package example: `@kubohiroya/turbowarp-document-data@0.5.0-rc.0`.
+Build with `pnpm run build`, then load `dist/document-data.js`. Package example: `@kubohiroya/turbowarp-document-data@0.5.0-rc.1`.
 
 ## Block reference
 
@@ -242,3 +242,5 @@ Inline source Schema validation defaults to the explicit 2020-12 profile and sel
 
 
 Project replacement (`RUNTIME_DISPOSED` followed by `PROJECT_LOADED`) reuses cached extension/store/provider instances. It invalidates old edit captures and clears transient HTML/Markdown/session handles, while persistent registrations remain available for the next project storage. Only explicit `dispose()` permanently unregisters them.
+
+Representation providers may explicitly include their own active kind in `fromRepresentations` when they support saving edited blocks back to canonical source while retaining that representation. The registry otherwise rejects same-kind requests before invoking the owner; `fromSource` alone never opts an active block view into this Save path. Parsing, stale checks, and atomic commit remain the owner's responsibility. Update and reload both owner and host bundles together.
