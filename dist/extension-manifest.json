@@ -3,7 +3,53 @@
   "id": "kubohiroyadocumentdata",
   "blocks": [
     {
+      "opcode": "createJsonSource",
+      "blockType": "COMMAND",
+      "arguments": [
+        {
+          "id": "FILENAME",
+          "type": "STRING"
+        },
+        {
+          "id": "NAME",
+          "type": "STRING"
+        },
+        {
+          "id": "TEXT",
+          "type": "STRING"
+        }
+      ]
+    },
+    {
+      "opcode": "createYamlSource",
+      "blockType": "COMMAND",
+      "arguments": [
+        {
+          "id": "FILENAME",
+          "type": "STRING"
+        },
+        {
+          "id": "NAME",
+          "type": "STRING"
+        },
+        {
+          "id": "TEXT",
+          "type": "STRING"
+        }
+      ]
+    },
+    {
       "opcode": "deleteDocument",
+      "blockType": "COMMAND",
+      "arguments": [
+        {
+          "id": "NAME",
+          "type": "STRING"
+        }
+      ]
+    },
+    {
+      "opcode": "deleteSourceDocument",
       "blockType": "COMMAND",
       "arguments": [
         {
@@ -37,7 +83,27 @@
       ]
     },
     {
+      "opcode": "getSourceDocument",
+      "blockType": "REPORTER",
+      "arguments": [
+        {
+          "id": "NAME",
+          "type": "STRING"
+        }
+      ]
+    },
+    {
       "opcode": "hasDocument",
+      "blockType": "BOOLEAN",
+      "arguments": [
+        {
+          "id": "NAME",
+          "type": "STRING"
+        }
+      ]
+    },
+    {
+      "opcode": "hasSourceDocument",
       "blockType": "BOOLEAN",
       "arguments": [
         {
@@ -106,12 +172,37 @@
           "type": "STRING"
         }
       ]
+    },
+    {
+      "opcode": "sourceDocument",
+      "blockType": "HAT",
+      "arguments": [
+        {
+          "id": "DOCUMENT",
+          "type": "STRING",
+          "menu": "sourceDocuments"
+        }
+      ]
+    },
+    {
+      "opcode": "sourceDocumentFormat",
+      "blockType": "REPORTER",
+      "arguments": [
+        {
+          "id": "NAME",
+          "type": "STRING"
+        }
+      ]
     }
   ],
   "menus": [
     {
       "id": "documentFormat",
       "acceptReporters": true
+    },
+    {
+      "id": "sourceDocuments",
+      "acceptReporters": false
     }
   ]
 }

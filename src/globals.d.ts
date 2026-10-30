@@ -20,7 +20,7 @@ interface ScratchApi {
     toBoolean(value: unknown): boolean;
   };
   translate: ScratchTranslate;
-  vm?: {runtime?: {on?(event: string, listener: () => void): void}};
+  vm?: {runtime?: {on?(event: string, listener: () => void): void; off?(event: string, listener: () => void): void; extensionStorage?: Record<string, unknown>; emitProjectChanged?(): void; targets?: unknown[]}; stopAll?(): void};
 }
 
 interface ScratchBlockUtility {target: object}
