@@ -4,9 +4,9 @@ import type {SourceDocumentProvider,SourceDocumentRepresentation} from '@kubohir
 const publicCrossOnly: SourceDocumentRepresentation={kind:'schema-blocks',label:'Schema',fromSource:false,toSource:true,fromRepresentations:['yaml-blocks']};
 const representation=(extra:Record<string,unknown>={})=>({kind:'schema-blocks',label:'Schema',fromSource:true,toSource:true,...extra});
 function fixture({active='source',omitActive=false,options=[representation()]}:{active?:string;omitActive?:boolean;options?:ReturnType<typeof representation>[]}={}){
- const registry=createSourceDocumentRegistry();let prepared=0;
- const provider:SourceDocumentProvider={id:'owner',list:()=>[{documentId:'one',filename:'one.yaml',...(omitActive?{}:{activeRepresentation:active}),representations:options}],open:()=>({inspect:()=>({available:true}),capture:()=>({source:'value: 1\n'}),prepare:async(_s,source)=>({source}),commit:async(_s,p)=>({source:p.source}),prepareRepresentation:async()=>{prepared++;return {summary:'Atomic conversion'};},commitRepresentation:async()=>({source:'value: 1\n'}),dispose(){}})};
- return{registry,register:()=>registry.register(provider),get prepared(){return prepared;}};
+ const registry=createSourceDocumentRegistry();let prepared=0,committed=0;
+ const provider:SourceDocumentProvider={id:'owner',list:()=>[{documentId:'one',filename:'one.yaml',...(omitActive?{}:{activeRepresentation:active}),representations:options}],open:()=>({inspect:()=>({available:true}),capture:()=>({source:'value: 1\n'}),prepare:async(_s,source)=>({source}),commit:async(_s,p)=>({source:p.source}),prepareRepresentation:async()=>{prepared++;return {summary:'Atomic conversion'};},commitRepresentation:async()=>{committed++;return {source:'value: 1\n'};},dispose(){}})};
+ return{registry,register:()=>registry.register(provider),get prepared(){return prepared;},get committed(){return committed;}};
 }
 const open=(f:ReturnType<typeof fixture>)=>f.registry.open({providerId:'owner',documentId:'one'});
 describe('bounded cross representation metadata',()=>{
@@ -33,10 +33,18 @@ describe('bounded cross representation metadata',()=>{
    const f=fixture(options);f.register();const adapter=open(f);await adapter.prepareRepresentation!(adapter.capture(),{kind:'schema-blocks',direction:'from-source'});expect(f.prepared).toBe(1);f.registry.dispose();
   }
  });
- it('refuses missing, wrong, self and raw-disabled conversion kinds before calling the owner',async()=>{
-  for(const options of [{active:'yaml-blocks',options:[representation()]},{active:'yaml-blocks',options:[representation({fromRepresentations:['other']})]},{active:'schema-blocks',options:[representation({fromRepresentations:['schema-blocks']})]},{active:'source',options:[representation({fromSource:false,fromRepresentations:['yaml-blocks']})]}]){
+ it('refuses missing, wrong, undeclared same-kind and raw-disabled requests before calling the owner',async()=>{
+  for(const options of [{active:'yaml-blocks',options:[representation()]},{active:'yaml-blocks',options:[representation({fromRepresentations:['other']})]},{active:'schema-blocks',options:[representation()]},{active:'schema-blocks',options:[representation({fromRepresentations:['other']})]},{active:'source',options:[representation({fromSource:false,fromRepresentations:['yaml-blocks']})]}]){
    const f=fixture(options);f.register();const adapter=open(f);await expect(adapter.prepareRepresentation!(adapter.capture(),{kind:'schema-blocks',direction:'from-source'})).rejects.toThrow(/not supported/);expect(f.prepared).toBe(0);f.registry.dispose();
   }
+ });
+ it('permits an explicitly advertised same-kind Save while preserving owner validation and lifetime checks',async()=>{
+  const option:SourceDocumentRepresentation={kind:'schema-blocks',label:'Schema',fromSource:false,toSource:true,fromRepresentations:['schema-blocks']};
+  const f=fixture({active:'schema-blocks',options:[representation({...option})]});const unregister=f.register();const adapter=open(f),snapshot=adapter.capture();
+  expect(f.registry.list()[0]!.representations![0]!.fromRepresentations).toEqual(['schema-blocks']);
+  const candidate=await adapter.prepareRepresentation!(snapshot,{kind:'schema-blocks',direction:'from-source'});expect(f.prepared).toBe(1);
+  await adapter.commitRepresentation!(snapshot,candidate);expect(f.committed).toBe(1);
+  unregister();await expect(adapter.prepareRepresentation!(snapshot,{kind:'schema-blocks',direction:'from-source'})).rejects.toThrow(/closed/);expect(f.prepared).toBe(1);f.registry.dispose();
  });
  it('preserves existing block-to-source forwarding',async()=>{
   const f=fixture({active:'schema-blocks'});f.register();const adapter=open(f);await adapter.prepareRepresentation!(adapter.capture(),{kind:'schema-blocks',direction:'to-source'});expect(f.prepared).toBe(1);f.registry.dispose();

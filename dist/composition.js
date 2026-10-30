@@ -366,7 +366,7 @@ function createProviderRegistry() {
             ensure();
             const option = metadata.representations?.find((item) => item.kind === request?.kind);
             const activeKind = metadata.activeRepresentation || "source";
-            const permitted = request?.direction === "from-source" ? activeKind === "source" ? option?.fromSource : activeKind !== option?.kind && option?.fromRepresentations?.includes(activeKind) : request?.direction === "to-source" ? option?.toSource : false;
+            const permitted = request?.direction === "from-source" ? activeKind === "source" ? option?.fromSource : option?.fromRepresentations?.includes(activeKind) : request?.direction === "to-source" ? option?.toSource : false;
             if (!option || !permitted) fail("DOCUMENT_REPRESENTATION_UNKNOWN", "This representation conversion is not supported.");
             if (option.available === false) fail("DOCUMENT_REPRESENTATION_UNAVAILABLE", option.reason || "This representation is unavailable.");
             const candidate = await adapter.prepareRepresentation(snapshot, request);

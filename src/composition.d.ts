@@ -1,4 +1,4 @@
-export interface SourceDocumentRepresentation {readonly kind:string;readonly label:string;readonly fromSource:boolean;readonly toSource:boolean;readonly fromRepresentations?:readonly string[];readonly available?:boolean;readonly reason?:string;}
+export interface SourceDocumentRepresentation {readonly kind:string;readonly label:string;readonly fromSource:boolean;readonly toSource:boolean;/** Explicit active block kinds accepted by from-source, including this kind only when same-kind Save is supported. */ readonly fromRepresentations?:readonly string[];readonly available?:boolean;readonly reason?:string;}
 export interface SourceDocumentRepresentationRequest {readonly kind:string;readonly direction:'from-source'|'to-source';}
 export interface SourceDocumentRepresentationCandidate {readonly summary:string;}
 export interface SourceDocumentSchemaMetadata {readonly id: string; readonly schema: Readonly<Record<string, unknown>>;}
