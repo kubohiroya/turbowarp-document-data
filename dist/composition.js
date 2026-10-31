@@ -429,16 +429,99 @@ function getProviderRegistry(scope) {
   Object.defineProperty(scope, providerRegistrySymbol, { value: registry, enumerable: false, writable: false, configurable: true });
   return registry;
 }
+
+// src/document-tree/registry.js
+var documentTreeRegistrySymbol = /* @__PURE__ */ Symbol.for("@kubohiroya/turbowarp-document-data/document-tree-registry/v1");
+var documentTreeErrorCodes = Object.freeze([
+  "DOCUMENT_TREE_UNAVAILABLE",
+  "DOCUMENT_NOT_FOUND",
+  "INVALID_LOCATION",
+  "LOCATION_NOT_FOUND",
+  "DOCUMENT_LIMIT_EXCEEDED",
+  "DOCUMENT_TREE_OPTIONS_INVALID",
+  "DOCUMENT_TREE_PROVIDER_INVALID",
+  "REGISTRY_SCOPE_INVALID",
+  "REGISTRY_INCOMPATIBLE"
+]);
+var DocumentTreeError = class extends Error {
+  constructor(code, message) {
+    super(`${code}: ${message}`);
+    this.name = "DocumentTreeError";
+    this.code = code;
+  }
+};
+var fail3 = (code, message) => {
+  throw new DocumentTreeError(code, message);
+};
+var isLimit = (value) => Number.isSafeInteger(value) && value >= 0;
+var captureOptions = (options) => {
+  if (typeof options !== "object" || options === null) fail3("DOCUMENT_TREE_OPTIONS_INVALID", "Capture options are required.");
+  const { location, positions = false, limits } = options;
+  if (typeof location !== "string") fail3("INVALID_LOCATION", "A document location must be text.");
+  if (typeof positions !== "boolean") fail3("DOCUMENT_TREE_OPTIONS_INVALID", "positions must be true or false.");
+  if (typeof limits !== "object" || limits === null || !isLimit(limits.maxDepth) || !isLimit(limits.maxNodes)) {
+    fail3("DOCUMENT_TREE_OPTIONS_INVALID", "limits.maxDepth and limits.maxNodes must be non-negative integers.");
+  }
+  return Object.freeze({ location, positions, limits: Object.freeze({ maxDepth: limits.maxDepth, maxNodes: limits.maxNodes }) });
+};
+var captureResult = (result) => {
+  if (typeof result !== "object" || result === null || result.kind !== "html" && result.kind !== "markdown" || typeof result.revision !== "string" || typeof result.root !== "object" || result.root === null || Array.isArray(result.root)) {
+    fail3("DOCUMENT_TREE_PROVIDER_INVALID", "The document tree provider returned an invalid capture.");
+  }
+  return { kind: result.kind, revision: result.revision, root: result.root };
+};
+function createDocumentTreeRegistry() {
+  const entries = [];
+  return Object.freeze({
+    apiVersion: 1,
+    register(provider) {
+      if (!provider || typeof provider.capture !== "function") fail3("DOCUMENT_TREE_PROVIDER_INVALID", "A document tree provider with capture() is required.");
+      const entry = Object.freeze({ capture: provider.capture.bind(provider) });
+      entries.push(entry);
+      let registered = true;
+      return () => {
+        if (!registered) return;
+        registered = false;
+        const index = entries.indexOf(entry);
+        if (index >= 0) entries.splice(index, 1);
+      };
+    },
+    capture(target, name, options) {
+      const normalized = captureOptions(options);
+      const entry = entries.at(-1);
+      if (!entry) fail3("DOCUMENT_TREE_UNAVAILABLE", "Document Data is not loaded with DOCUMENT_DATA_MVP enabled.");
+      return captureResult(entry.capture(target, name, normalized));
+    }
+  });
+}
+function getDocumentTreeRegistry(scope) {
+  if ((typeof scope !== "object" || scope === null) && typeof scope !== "function") fail3("REGISTRY_SCOPE_INVALID", "A runtime-local scope object is required.");
+  const previous = Object.getOwnPropertyDescriptor(scope, documentTreeRegistrySymbol);
+  if (previous) {
+    if (!Object.hasOwn(previous, "value")) fail3("REGISTRY_SCOPE_INVALID", "The registry slot cannot be an accessor.");
+    const registry2 = previous.value;
+    if (registry2?.apiVersion !== 1 || typeof registry2.register !== "function" || typeof registry2.capture !== "function") fail3("REGISTRY_INCOMPATIBLE", "An incompatible document tree registry occupies this scope.");
+    return registry2;
+  }
+  const registry = createDocumentTreeRegistry();
+  Object.defineProperty(scope, documentTreeRegistrySymbol, { value: registry, enumerable: false, writable: false, configurable: true });
+  return registry;
+}
 export {
+  DocumentTreeError,
   SourceDocumentError as EmbeddedYamlError,
   SourceDocumentError,
+  createDocumentTreeRegistry,
   createProviderRegistry,
   createProviderRegistry as createSourceDocumentRegistry,
   decodeSourceDocumentReference as decodeReference,
   decodeSourceDocumentReference,
+  documentTreeErrorCodes,
+  documentTreeRegistrySymbol,
   sourceDocumentSchemaLimits as embeddedYamlSchemaLimits,
   encodeSourceDocumentReference as encodeReference,
   encodeSourceDocumentReference,
+  getDocumentTreeRegistry,
   getProviderRegistry,
   getProviderRegistry as getSourceDocumentRegistry,
   normalizeSourceDocumentSchema as normalizeSchemaMetadata,

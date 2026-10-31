@@ -7708,7 +7708,7 @@ var SourceDocumentError = class extends Error {
 		this.code = code;
 	}
 };
-var fail$1 = (code, message) => {
+var fail$2 = (code, message) => {
 	throw new SourceDocumentError(code, message);
 };
 var hasControlCharacters = (value) => Array.from(value).some((character) => {
@@ -7716,23 +7716,23 @@ var hasControlCharacters = (value) => Array.from(value).some((character) => {
 	return code < 32 || code === 127;
 });
 var identifier = (value, name) => {
-	if (typeof value !== "string" || !value.length || value.length > 1024 || hasControlCharacters(value)) fail$1("REFERENCE_INVALID", `${name} must be a bounded nonempty identifier.`);
+	if (typeof value !== "string" || !value.length || value.length > 1024 || hasControlCharacters(value)) fail$2("REFERENCE_INVALID", `${name} must be a bounded nonempty identifier.`);
 	return value;
 };
 function encodeSourceDocumentReference(reference) {
-	if (!reference || typeof reference !== "object") fail$1("REFERENCE_INVALID", "A document reference is required.");
+	if (!reference || typeof reference !== "object") fail$2("REFERENCE_INVALID", "A document reference is required.");
 	const providerId = identifier(reference.providerId, "providerId");
 	const documentId = identifier(reference.documentId, "documentId");
 	try {
 		return `${PREFIX}${encodeURIComponent(providerId)}:${encodeURIComponent(documentId)}`;
 	} catch {
-		return fail$1("REFERENCE_INVALID", "The reference contains invalid Unicode.");
+		return fail$2("REFERENCE_INVALID", "The reference contains invalid Unicode.");
 	}
 }
 function decodeSourceDocumentReference(value) {
-	if (typeof value !== "string" || value.length > 8192 || !value.startsWith(PREFIX)) fail$1("REFERENCE_INVALID", "The block does not contain a valid source document reference.");
+	if (typeof value !== "string" || value.length > 8192 || !value.startsWith(PREFIX)) fail$2("REFERENCE_INVALID", "The block does not contain a valid source document reference.");
 	const parts = value.slice(19).split(":");
-	if (parts.length !== 2) fail$1("REFERENCE_INVALID", "The source document reference is malformed.");
+	if (parts.length !== 2) fail$2("REFERENCE_INVALID", "The source document reference is malformed.");
 	let reference;
 	try {
 		reference = {
@@ -7740,22 +7740,22 @@ function decodeSourceDocumentReference(value) {
 			documentId: decodeURIComponent(parts[1])
 		};
 	} catch {
-		return fail$1("REFERENCE_INVALID", "The source document reference encoding is invalid.");
+		return fail$2("REFERENCE_INVALID", "The source document reference encoding is invalid.");
 	}
-	if (encodeSourceDocumentReference(reference) !== value) fail$1("REFERENCE_INVALID", "The source document reference is not canonical.");
+	if (encodeSourceDocumentReference(reference) !== value) fail$2("REFERENCE_INVALID", "The source document reference is not canonical.");
 	return Object.freeze(reference);
 }
 //#endregion
 //#region src/source-document/docs-url.js
 function normalizeDocsURL$1(value) {
-	if (typeof value !== "string" || value.length > 8192) fail$1("DOCUMENT_METADATA_INVALID", "Document documentation must use an HTTPS URL.");
+	if (typeof value !== "string" || value.length > 8192) fail$2("DOCUMENT_METADATA_INVALID", "Document documentation must use an HTTPS URL.");
 	let url;
 	try {
 		url = new globalThis.URL(value);
 	} catch {
-		return fail$1("DOCUMENT_METADATA_INVALID", "Document documentation URL is invalid.");
+		return fail$2("DOCUMENT_METADATA_INVALID", "Document documentation URL is invalid.");
 	}
-	if (url.protocol !== "https:" || url.username || url.password || hasControlCharacters(value) || value.includes(" ")) fail$1("DOCUMENT_METADATA_INVALID", "Document documentation must use a fixed HTTPS URL without credentials.");
+	if (url.protocol !== "https:" || url.username || url.password || hasControlCharacters(value) || value.includes(" ")) fail$2("DOCUMENT_METADATA_INVALID", "Document documentation must use a fixed HTTPS URL without credentials.");
 	return value;
 }
 //#endregion
@@ -14564,40 +14564,40 @@ var sourceDocumentSchemaLimits = Object.freeze({
 });
 /** Copy finite JSON without invoking accessors or serialization hooks. This does not interpret JSON Schema. */
 function normalizeSourceDocumentSchema(metadata) {
-	if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) fail$1("SCHEMA_INVALID", "Inline schema metadata must be an object.");
+	if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) fail$2("SCHEMA_INVALID", "Inline schema metadata must be an object.");
 	const properties = Object.getOwnPropertyDescriptors(metadata);
-	if (!properties.id || !Object.hasOwn(properties.id, "value") || !properties.schema || !Object.hasOwn(properties.schema, "value") || Object.keys(properties).some((key) => key !== "id" && key !== "schema")) fail$1("SCHEMA_INVALID", "Inline schema metadata requires only id and schema.");
+	if (!properties.id || !Object.hasOwn(properties.id, "value") || !properties.schema || !Object.hasOwn(properties.schema, "value") || Object.keys(properties).some((key) => key !== "id" && key !== "schema")) fail$2("SCHEMA_INVALID", "Inline schema metadata requires only id and schema.");
 	const id = identifier(properties.id.value, "schema id");
 	const root = properties.schema.value;
-	if (!root || typeof root !== "object" || Array.isArray(root)) fail$1("SCHEMA_INVALID", "An inline JSON Schema object is required.");
+	if (!root || typeof root !== "object" || Array.isArray(root)) fail$2("SCHEMA_INVALID", "An inline JSON Schema object is required.");
 	const path = /* @__PURE__ */ new Set();
 	let nodes = 0, characters = 0;
 	const clone = (value, depth) => {
-		if (++nodes > sourceDocumentSchemaLimits.maxNodes || depth > sourceDocumentSchemaLimits.maxDepth) fail$1("SCHEMA_LIMIT", "The inline schema is too deeply nested or has too many values.");
+		if (++nodes > sourceDocumentSchemaLimits.maxNodes || depth > sourceDocumentSchemaLimits.maxDepth) fail$2("SCHEMA_LIMIT", "The inline schema is too deeply nested or has too many values.");
 		if (value === null || typeof value === "boolean") return value;
 		if (typeof value === "number") {
-			if (!Number.isFinite(value)) fail$1("SCHEMA_INVALID", "Schema numbers must be finite.");
+			if (!Number.isFinite(value)) fail$2("SCHEMA_INVALID", "Schema numbers must be finite.");
 			return value;
 		}
 		if (typeof value === "string") {
 			characters += value.length;
-			if (characters > sourceDocumentSchemaLimits.maxBytes) fail$1("SCHEMA_LIMIT", "The inline schema exceeds its size limit.");
+			if (characters > sourceDocumentSchemaLimits.maxBytes) fail$2("SCHEMA_LIMIT", "The inline schema exceeds its size limit.");
 			return value;
 		}
-		if (!value || typeof value !== "object") fail$1("SCHEMA_INVALID", "Schemas must contain only JSON values.");
-		if (path.has(value)) fail$1("SCHEMA_INVALID", "Cyclic schema payloads are unsupported.");
-		if (Object.getOwnPropertySymbols(value).length) fail$1("SCHEMA_INVALID", "Schemas cannot contain symbol properties.");
+		if (!value || typeof value !== "object") fail$2("SCHEMA_INVALID", "Schemas must contain only JSON values.");
+		if (path.has(value)) fail$2("SCHEMA_INVALID", "Cyclic schema payloads are unsupported.");
+		if (Object.getOwnPropertySymbols(value).length) fail$2("SCHEMA_INVALID", "Schemas cannot contain symbol properties.");
 		const prototype = Object.getPrototypeOf(value);
-		if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) fail$1("SCHEMA_INVALID", "Schemas must use plain JSON objects.");
+		if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) fail$2("SCHEMA_INVALID", "Schemas must use plain JSON objects.");
 		path.add(value);
 		const result = Array.isArray(value) ? [] : {};
 		const properties = Object.getOwnPropertyDescriptors(value);
-		if (Array.isArray(value) && (value.length > sourceDocumentSchemaLimits.maxNodes || Object.keys(properties).filter((key) => key !== "length").some((key, index) => key !== String(index)) || Object.keys(properties).length !== value.length + 1)) fail$1("SCHEMA_INVALID", "Schema arrays must not contain holes or custom properties.");
+		if (Array.isArray(value) && (value.length > sourceDocumentSchemaLimits.maxNodes || Object.keys(properties).filter((key) => key !== "length").some((key, index) => key !== String(index)) || Object.keys(properties).length !== value.length + 1)) fail$2("SCHEMA_INVALID", "Schema arrays must not contain holes or custom properties.");
 		for (const [key, property] of Object.entries(properties)) {
 			if (Array.isArray(value) && key === "length") continue;
-			if (!Object.hasOwn(property, "value") || !property.enumerable) fail$1("SCHEMA_INVALID", "Schema payloads cannot contain accessors or hidden properties.");
+			if (!Object.hasOwn(property, "value") || !property.enumerable) fail$2("SCHEMA_INVALID", "Schema payloads cannot contain accessors or hidden properties.");
 			characters += key.length;
-			if (characters > sourceDocumentSchemaLimits.maxBytes) fail$1("SCHEMA_LIMIT", "The inline schema exceeds its size limit.");
+			if (characters > sourceDocumentSchemaLimits.maxBytes) fail$2("SCHEMA_LIMIT", "The inline schema exceeds its size limit.");
 			Object.defineProperty(result, key, {
 				value: clone(property.value, depth + 1),
 				enumerable: true,
@@ -14613,19 +14613,19 @@ function normalizeSourceDocumentSchema(metadata) {
 		id,
 		schema
 	});
-	if (new globalThis.TextEncoder().encode(JSON.stringify(result)).byteLength > sourceDocumentSchemaLimits.maxBytes) fail$1("SCHEMA_LIMIT", "The inline schema exceeds its UTF-8 size limit.");
+	if (new globalThis.TextEncoder().encode(JSON.stringify(result)).byteLength > sourceDocumentSchemaLimits.maxBytes) fail$2("SCHEMA_LIMIT", "The inline schema exceeds its UTF-8 size limit.");
 	return result;
 }
 //#endregion
 //#region src/source-document/preview.js
-var fail = (message) => {
+var fail$1 = (message) => {
 	throw new SourceDocumentError("DOCUMENT_PREVIEW_INVALID", message);
 };
 var plain = (value) => value && typeof value === "object" && !Array.isArray(value) && [Object.prototype, null].includes(Object.getPrototypeOf(value));
 /** Copy finite declarative JSON only; no project archives, owner payloads or executable callbacks. */
 function normalizeSourceDocumentPreview(model, requestedKind) {
 	identifier(requestedKind, "preview representation kind");
-	if (!plain(model)) fail("A declarative document preview is required.");
+	if (!plain(model)) fail$1("A declarative document preview is required.");
 	const allowed = /* @__PURE__ */ new Set([
 		"kind",
 		"source",
@@ -14634,31 +14634,31 @@ function normalizeSourceDocumentPreview(model, requestedKind) {
 		"blockDefinitions",
 		"menus"
 	]);
-	if (Object.keys(model).some((key) => !allowed.has(key))) fail("A preview cannot contain project, archive or asset payloads.");
+	if (Object.keys(model).some((key) => !allowed.has(key))) fail$1("A preview cannot contain project, archive or asset payloads.");
 	const ancestors = /* @__PURE__ */ new Set();
 	let nodes = 0, bytes = 0;
 	const copy = (value, depth = 0) => {
-		if (++nodes > 5e5 || depth > 80) fail("The document preview exceeds its structural limit.");
+		if (++nodes > 5e5 || depth > 80) fail$1("The document preview exceeds its structural limit.");
 		if (value === null || typeof value === "boolean") return value;
 		if (typeof value === "number") {
-			if (!Number.isFinite(value)) fail("Preview numbers must be finite.");
+			if (!Number.isFinite(value)) fail$1("Preview numbers must be finite.");
 			return value;
 		}
 		if (typeof value === "string") {
 			bytes += new TextEncoder().encode(value).byteLength;
-			if (bytes > 8388608) fail("The document preview exceeds its byte limit.");
+			if (bytes > 8388608) fail$1("The document preview exceeds its byte limit.");
 			return value;
 		}
-		if (!value || typeof value !== "object" || ancestors.has(value) || !Array.isArray(value) && !plain(value)) fail("Preview data must be finite plain JSON without callbacks.");
-		if (Object.getOwnPropertySymbols(value).length) fail("Preview JSON cannot contain symbols.");
+		if (!value || typeof value !== "object" || ancestors.has(value) || !Array.isArray(value) && !plain(value)) fail$1("Preview data must be finite plain JSON without callbacks.");
+		if (Object.getOwnPropertySymbols(value).length) fail$1("Preview JSON cannot contain symbols.");
 		const properties = Object.getOwnPropertyDescriptors(value), array = Array.isArray(value), result = array ? [] : {};
-		if (array && (!Number.isSafeInteger(value.length) || Object.keys(properties).length !== value.length + 1)) fail("Preview arrays cannot contain holes or custom fields.");
+		if (array && (!Number.isSafeInteger(value.length) || Object.keys(properties).length !== value.length + 1)) fail$1("Preview arrays cannot contain holes or custom fields.");
 		ancestors.add(value);
 		for (const [key, descriptor] of Object.entries(properties)) {
 			if (array && key === "length") continue;
-			if (!Object.hasOwn(descriptor, "value") || !descriptor.enumerable) fail("Preview JSON cannot contain accessors or hidden fields.");
+			if (!Object.hasOwn(descriptor, "value") || !descriptor.enumerable) fail$1("Preview JSON cannot contain accessors or hidden fields.");
 			bytes += new TextEncoder().encode(key).byteLength;
-			if (bytes > 8388608) fail("The document preview exceeds its byte limit.");
+			if (bytes > 8388608) fail$1("The document preview exceeds its byte limit.");
 			Object.defineProperty(result, key, {
 				value: copy(descriptor.value, depth + 1),
 				enumerable: true
@@ -14668,33 +14668,33 @@ function normalizeSourceDocumentPreview(model, requestedKind) {
 		return Object.freeze(result);
 	};
 	const result = copy(model);
-	if (result.kind !== requestedKind || typeof result.source !== "string") fail("A preview must identify the requested kind and its source.");
-	if (result.blocks !== void 0 && (!plain(result.blocks) || Object.keys(result.blocks).length > 1e5 || Object.values(result.blocks).some((block) => !plain(block) || typeof block.opcode !== "string"))) fail("Preview blocks must be a bounded serialized block dictionary.");
-	if (result.rootIds !== void 0 && (!Array.isArray(result.rootIds) || result.rootIds.length > 256 || new Set(result.rootIds).size !== result.rootIds.length || result.rootIds.some((id) => typeof id !== "string" || !Object.hasOwn(result.blocks || {}, id)))) fail("Preview roots must identify distinct included blocks.");
+	if (result.kind !== requestedKind || typeof result.source !== "string") fail$1("A preview must identify the requested kind and its source.");
+	if (result.blocks !== void 0 && (!plain(result.blocks) || Object.keys(result.blocks).length > 1e5 || Object.values(result.blocks).some((block) => !plain(block) || typeof block.opcode !== "string"))) fail$1("Preview blocks must be a bounded serialized block dictionary.");
+	if (result.rootIds !== void 0 && (!Array.isArray(result.rootIds) || result.rootIds.length > 256 || new Set(result.rootIds).size !== result.rootIds.length || result.rootIds.some((id) => typeof id !== "string" || !Object.hasOwn(result.blocks || {}, id)))) fail$1("Preview roots must identify distinct included blocks.");
 	if (result.blockDefinitions !== void 0) {
-		if (!Array.isArray(result.blockDefinitions) || result.blockDefinitions.length > 4096) fail("Preview block definitions must be a bounded array.");
+		if (!Array.isArray(result.blockDefinitions) || result.blockDefinitions.length > 4096) fail$1("Preview block definitions must be a bounded array.");
 		const seen = /* @__PURE__ */ new Set();
 		for (const definition of result.blockDefinitions) {
-			if (!plain(definition) || typeof definition.opcode !== "string" || !definition.opcode || definition.opcode.length > 1024 || seen.has(definition.opcode) || typeof definition.blockType !== "string" || !(typeof definition.text === "string" || Array.isArray(definition.text) && definition.text.every((text) => typeof text === "string"))) fail("Preview definitions require distinct full opcodes and declarative labels.");
+			if (!plain(definition) || typeof definition.opcode !== "string" || !definition.opcode || definition.opcode.length > 1024 || seen.has(definition.opcode) || typeof definition.blockType !== "string" || !(typeof definition.text === "string" || Array.isArray(definition.text) && definition.text.every((text) => typeof text === "string"))) fail$1("Preview definitions require distinct full opcodes and declarative labels.");
 			if (definition.blockIconURI !== void 0) {
-				if (typeof definition.blockIconURI !== "string") fail("A preview block icon must be an image URI.");
+				if (typeof definition.blockIconURI !== "string") fail$1("A preview block icon must be an image URI.");
 				let uri;
 				try {
 					uri = new URL(definition.blockIconURI, "https://preview.invalid/");
 				} catch {
-					fail("A preview block icon URI is invalid.");
+					fail$1("A preview block icon URI is invalid.");
 				}
 				if (![
 					"http:",
 					"https:",
 					"data:"
-				].includes(uri.protocol) || uri.protocol === "data:" && !/^data:image\//iu.test(definition.blockIconURI)) fail("A preview cannot include executable icon URIs.");
+				].includes(uri.protocol) || uri.protocol === "data:" && !/^data:image\//iu.test(definition.blockIconURI)) fail$1("A preview cannot include executable icon URIs.");
 			}
 			seen.add(definition.opcode);
 		}
 	}
-	if (result.menus !== void 0 && (!plain(result.menus) || Object.values(result.menus).some((menu) => !plain(menu) || !Array.isArray(menu.items)))) fail("Preview menus must contain static item arrays.");
-	if (new TextEncoder().encode(JSON.stringify(result)).byteLength > 8388608) fail("The serialized preview exceeds its byte limit.");
+	if (result.menus !== void 0 && (!plain(result.menus) || Object.values(result.menus).some((menu) => !plain(menu) || !Array.isArray(menu.items)))) fail$1("Preview menus must contain static item arrays.");
+	if (new TextEncoder().encode(JSON.stringify(result)).byteLength > 8388608) fail$1("The serialized preview exceeds its byte limit.");
 	return result;
 }
 //#endregion
@@ -14709,27 +14709,27 @@ var validAdapter = (adapter) => adapter && [
 ].every((name) => typeof adapter[name] === "function");
 var reference = (value) => typeof value === "string" ? decodeSourceDocumentReference(value) : decodeSourceDocumentReference(encodeSourceDocumentReference(value));
 var sourceRepresentations = (value) => {
-	if (!Array.isArray(value)) fail$1("DOCUMENT_METADATA_INVALID", "Source representation kinds must be a finite bounded array.");
+	if (!Array.isArray(value)) fail$2("DOCUMENT_METADATA_INVALID", "Source representation kinds must be a finite bounded array.");
 	const length = value.length;
-	if (!Number.isSafeInteger(length) || length > 16) fail$1("DOCUMENT_METADATA_INVALID", "Source representation kinds must be a finite bounded array.");
+	if (!Number.isSafeInteger(length) || length > 16) fail$2("DOCUMENT_METADATA_INVALID", "Source representation kinds must be a finite bounded array.");
 	const seen = /* @__PURE__ */ new Set(), result = [];
 	for (let index = 0; index < length; index++) {
-		if (!Object.hasOwn(value, index)) fail$1("DOCUMENT_METADATA_INVALID", "Source representation kinds cannot contain holes.");
+		if (!Object.hasOwn(value, index)) fail$2("DOCUMENT_METADATA_INVALID", "Source representation kinds cannot contain holes.");
 		const kind = identifier(value[index], "source representation kind");
-		if (seen.has(kind)) fail$1("DOCUMENT_METADATA_INVALID", "Source representation kinds must be unique.");
+		if (seen.has(kind)) fail$2("DOCUMENT_METADATA_INVALID", "Source representation kinds must be unique.");
 		seen.add(kind);
 		result.push(kind);
 	}
 	return Object.freeze(result);
 };
 var representations = (value) => {
-	if (!Array.isArray(value) || value.length > 32) fail$1("DOCUMENT_METADATA_INVALID", "Representation metadata must be a bounded array.");
+	if (!Array.isArray(value) || value.length > 32) fail$2("DOCUMENT_METADATA_INVALID", "Representation metadata must be a bounded array.");
 	const seen = /* @__PURE__ */ new Set();
 	return Object.freeze(value.map((item) => {
 		const kind = identifier(item?.kind, "representation kind");
-		if (seen.has(kind)) fail$1("DOCUMENT_METADATA_INVALID", "Representation kinds must be unique.");
+		if (seen.has(kind)) fail$2("DOCUMENT_METADATA_INVALID", "Representation kinds must be unique.");
 		seen.add(kind);
-		if (typeof item.label !== "string" || !item.label.length || item.label.length > 1024 || typeof item.fromSource !== "boolean" || typeof item.toSource !== "boolean" || item.available !== void 0 && typeof item.available !== "boolean" || item.reason !== void 0 && typeof item.reason !== "string") fail$1("DOCUMENT_METADATA_INVALID", "Invalid source representation metadata.");
+		if (typeof item.label !== "string" || !item.label.length || item.label.length > 1024 || typeof item.fromSource !== "boolean" || typeof item.toSource !== "boolean" || item.available !== void 0 && typeof item.available !== "boolean" || item.reason !== void 0 && typeof item.reason !== "string") fail$2("DOCUMENT_METADATA_INVALID", "Invalid source representation metadata.");
 		return Object.freeze({
 			kind,
 			label: item.label,
@@ -14743,16 +14743,16 @@ var representations = (value) => {
 };
 var documentsFor = (provider) => {
 	const documents = provider.list();
-	if (!Array.isArray(documents)) fail$1("DOCUMENT_METADATA_INVALID", "Provider document lists must be synchronous arrays.");
+	if (!Array.isArray(documents)) fail$2("DOCUMENT_METADATA_INVALID", "Provider document lists must be synchronous arrays.");
 	const seen = /* @__PURE__ */ new Set();
 	return documents.map((document) => {
 		const documentId = identifier(document?.documentId, "documentId");
-		if (seen.has(documentId)) fail$1("DOCUMENT_DUPLICATE", `Duplicate document ID: ${documentId}`);
+		if (seen.has(documentId)) fail$2("DOCUMENT_DUPLICATE", `Duplicate document ID: ${documentId}`);
 		seen.add(documentId);
-		if (typeof document.filename !== "string" || !document.filename.length || document.filename.length > 4096 || hasControlCharacters(document.filename)) fail$1("DOCUMENT_METADATA_INVALID", "A bounded filename is required.");
-		if (document.available !== void 0 && typeof document.available !== "boolean") fail$1("DOCUMENT_METADATA_INVALID", "Document availability must be boolean.");
-		if (document.reason !== void 0 && typeof document.reason !== "string") fail$1("DOCUMENT_METADATA_INVALID", "Document reasons must be text.");
-		if (document.format !== void 0 && document.format !== "yaml" && document.format !== "json") fail$1("DOCUMENT_METADATA_INVALID", "Document formats must be yaml or json.");
+		if (typeof document.filename !== "string" || !document.filename.length || document.filename.length > 4096 || hasControlCharacters(document.filename)) fail$2("DOCUMENT_METADATA_INVALID", "A bounded filename is required.");
+		if (document.available !== void 0 && typeof document.available !== "boolean") fail$2("DOCUMENT_METADATA_INVALID", "Document availability must be boolean.");
+		if (document.reason !== void 0 && typeof document.reason !== "string") fail$2("DOCUMENT_METADATA_INVALID", "Document reasons must be text.");
+		if (document.format !== void 0 && document.format !== "yaml" && document.format !== "json") fail$2("DOCUMENT_METADATA_INVALID", "Document formats must be yaml or json.");
 		return Object.freeze({
 			reference: Object.freeze({
 				providerId: provider.id,
@@ -14774,7 +14774,7 @@ function createProviderRegistry() {
 	const listeners = /* @__PURE__ */ new Set();
 	let disposed = false;
 	const active = () => {
-		if (disposed) fail$1("REGISTRY_DISPOSED", "The document registry is closed.");
+		if (disposed) fail$2("REGISTRY_DISPOSED", "The document registry is closed.");
 	};
 	const notify = () => {
 		for (const listener of [...listeners]) try {
@@ -14808,11 +14808,11 @@ function createProviderRegistry() {
 		},
 		register(provider) {
 			active();
-			if (!provider || typeof provider.list !== "function" || typeof provider.open !== "function" || provider.dispose !== void 0 && typeof provider.dispose !== "function" || provider.subscribe !== void 0 && typeof provider.subscribe !== "function") fail$1("PROVIDER_INVALID", "A document provider is required.");
+			if (!provider || typeof provider.list !== "function" || typeof provider.open !== "function" || provider.dispose !== void 0 && typeof provider.dispose !== "function" || provider.subscribe !== void 0 && typeof provider.subscribe !== "function") fail$2("PROVIDER_INVALID", "A document provider is required.");
 			const id = identifier(provider.id, "providerId");
-			if (entries.has(id)) fail$1("PROVIDER_DUPLICATE", `A provider is already registered: ${id}`);
+			if (entries.has(id)) fail$2("PROVIDER_DUPLICATE", `A provider is already registered: ${id}`);
 			const opcodes = provider.hatOpcodes ?? [];
-			if (!Array.isArray(opcodes)) fail$1("PROVIDER_INVALID", "Known hat opcodes must be an array.");
+			if (!Array.isArray(opcodes)) fail$2("PROVIDER_INVALID", "Known hat opcodes must be an array.");
 			const known = Object.freeze([...new Set(opcodes.map((opcode) => identifier(opcode, "hat opcode")))]);
 			const captured = {
 				id,
@@ -14833,7 +14833,7 @@ function createProviderRegistry() {
 					entry.unsubscribe = provider.subscribe(() => {
 						if (entries.get(id) === entry) notify();
 					});
-					if (typeof entry.unsubscribe !== "function") fail$1("PROVIDER_INVALID", "Provider subscriptions must return an unsubscribe function.");
+					if (typeof entry.unsubscribe !== "function") fail$2("PROVIDER_INVALID", "Provider subscriptions must return an unsubscribe function.");
 				}
 			} catch (error) {
 				entries.delete(id);
@@ -14864,18 +14864,18 @@ function createProviderRegistry() {
 			active();
 			const ref = reference(value);
 			const entry = entries.get(ref.providerId);
-			if (!entry) fail$1("PROVIDER_UNKNOWN", `No document provider is registered: ${ref.providerId}`);
+			if (!entry) fail$2("PROVIDER_UNKNOWN", `No document provider is registered: ${ref.providerId}`);
 			const metadata = documentsFor(entry.provider).find((document) => document.reference.documentId === ref.documentId);
-			if (!metadata) fail$1("DOCUMENT_UNKNOWN", `The provider does not contain this document: ${ref.documentId}`);
-			if (metadata.available === false) fail$1("DOCUMENT_UNAVAILABLE", metadata.reason || "The embedded YAML document is unavailable.");
+			if (!metadata) fail$2("DOCUMENT_UNKNOWN", `The provider does not contain this document: ${ref.documentId}`);
+			if (metadata.available === false) fail$2("DOCUMENT_UNAVAILABLE", metadata.reason || "The embedded YAML document is unavailable.");
 			const adapter = entry.provider.open(ref.documentId);
 			if (!validAdapter(adapter) || adapter.previewRepresentation !== void 0 && typeof adapter.previewRepresentation !== "function" || typeof adapter.prepareRepresentation === "function" !== (typeof adapter.commitRepresentation === "function")) {
 				adapter?.dispose?.();
-				fail$1("DOCUMENT_ADAPTER_INVALID", "The provider did not return a document adapter.");
+				fail$2("DOCUMENT_ADAPTER_INVALID", "The provider did not return a document adapter.");
 			}
 			let closed = false;
 			const ensure = () => {
-				if (closed || disposed || entries.get(ref.providerId) !== entry) fail$1("DOCUMENT_CLOSED", "The document editing session is closed.");
+				if (closed || disposed || entries.get(ref.providerId) !== entry) fail$2("DOCUMENT_CLOSED", "The document editing session is closed.");
 			};
 			const wrapped = Object.freeze({
 				inspect() {
@@ -14913,8 +14913,8 @@ function createProviderRegistry() {
 						const option = metadata.representations?.find((item) => item.kind === request?.kind);
 						const activeKind = metadata.activeRepresentation || "source";
 						const permitted = request?.direction === "from-source" ? activeKind === "source" ? option?.fromSource : option?.fromRepresentations?.includes(activeKind) : request?.direction === "to-source" ? option?.toSource : false;
-						if (!option || !permitted) fail$1("DOCUMENT_REPRESENTATION_UNKNOWN", "This representation conversion is not supported.");
-						if (option.available === false) fail$1("DOCUMENT_REPRESENTATION_UNAVAILABLE", option.reason || "This representation is unavailable.");
+						if (!option || !permitted) fail$2("DOCUMENT_REPRESENTATION_UNKNOWN", "This representation conversion is not supported.");
+						if (option.available === false) fail$2("DOCUMENT_REPRESENTATION_UNAVAILABLE", option.reason || "This representation is unavailable.");
 						const candidate = await adapter.prepareRepresentation(snapshot, request);
 						ensure();
 						return candidate;
@@ -14936,7 +14936,7 @@ function createProviderRegistry() {
 		},
 		subscribe(listener) {
 			active();
-			if (typeof listener !== "function") fail$1("REGISTRY_LISTENER_INVALID", "A change listener must be a function.");
+			if (typeof listener !== "function") fail$2("REGISTRY_LISTENER_INVALID", "A change listener must be a function.");
 			listeners.add(listener);
 			return () => {
 				listeners.delete(listener);
@@ -14961,16 +14961,108 @@ function createProviderRegistry() {
 }
 /** Share a registry across independently bundled owners without importing the Editor or VM. */
 function getProviderRegistry(scope) {
-	if ((typeof scope !== "object" || scope === null) && typeof scope !== "function") fail$1("REGISTRY_SCOPE_INVALID", "A runtime-local scope object is required.");
+	if ((typeof scope !== "object" || scope === null) && typeof scope !== "function") fail$2("REGISTRY_SCOPE_INVALID", "A runtime-local scope object is required.");
 	const previous = Object.getOwnPropertyDescriptor(scope, providerRegistrySymbol);
 	if (previous) {
-		if (!Object.hasOwn(previous, "value")) fail$1("REGISTRY_SCOPE_INVALID", "The registry slot cannot be an accessor.");
+		if (!Object.hasOwn(previous, "value")) fail$2("REGISTRY_SCOPE_INVALID", "The registry slot cannot be an accessor.");
 		const registry = previous.value;
 		if (registry?.apiVersion !== 1 || registry.sourceDocumentApiVersion !== 1 || typeof registry.register !== "function" || typeof registry.open !== "function") throw new SourceDocumentError("REGISTRY_INCOMPATIBLE", "An incompatible registry occupies this scope.");
 		if (!registry.disposed) return registry;
 	}
 	const registry = createProviderRegistry();
 	Object.defineProperty(scope, providerRegistrySymbol, {
+		value: registry,
+		enumerable: false,
+		writable: false,
+		configurable: true
+	});
+	return registry;
+}
+//#endregion
+//#region src/document-tree/registry.js
+var documentTreeRegistrySymbol = Symbol.for("@kubohiroya/turbowarp-document-data/document-tree-registry/v1");
+Object.freeze([
+	"DOCUMENT_TREE_UNAVAILABLE",
+	"DOCUMENT_NOT_FOUND",
+	"INVALID_LOCATION",
+	"LOCATION_NOT_FOUND",
+	"DOCUMENT_LIMIT_EXCEEDED",
+	"DOCUMENT_TREE_OPTIONS_INVALID",
+	"DOCUMENT_TREE_PROVIDER_INVALID",
+	"REGISTRY_SCOPE_INVALID",
+	"REGISTRY_INCOMPATIBLE"
+]);
+var DocumentTreeError = class extends Error {
+	constructor(code, message) {
+		super(`${code}: ${message}`);
+		this.name = "DocumentTreeError";
+		this.code = code;
+	}
+};
+var fail = (code, message) => {
+	throw new DocumentTreeError(code, message);
+};
+var isLimit = (value) => Number.isSafeInteger(value) && value >= 0;
+var captureOptions = (options) => {
+	if (typeof options !== "object" || options === null) fail("DOCUMENT_TREE_OPTIONS_INVALID", "Capture options are required.");
+	const { location, positions = false, limits } = options;
+	if (typeof location !== "string") fail("INVALID_LOCATION", "A document location must be text.");
+	if (typeof positions !== "boolean") fail("DOCUMENT_TREE_OPTIONS_INVALID", "positions must be true or false.");
+	if (typeof limits !== "object" || limits === null || !isLimit(limits.maxDepth) || !isLimit(limits.maxNodes)) fail("DOCUMENT_TREE_OPTIONS_INVALID", "limits.maxDepth and limits.maxNodes must be non-negative integers.");
+	return Object.freeze({
+		location,
+		positions,
+		limits: Object.freeze({
+			maxDepth: limits.maxDepth,
+			maxNodes: limits.maxNodes
+		})
+	});
+};
+var captureResult = (result) => {
+	if (typeof result !== "object" || result === null || result.kind !== "html" && result.kind !== "markdown" || typeof result.revision !== "string" || typeof result.root !== "object" || result.root === null || Array.isArray(result.root)) fail("DOCUMENT_TREE_PROVIDER_INVALID", "The document tree provider returned an invalid capture.");
+	return {
+		kind: result.kind,
+		revision: result.revision,
+		root: result.root
+	};
+};
+/** The registry only forwards captures; it never keeps trees or copies. */
+function createDocumentTreeRegistry() {
+	const entries = [];
+	return Object.freeze({
+		apiVersion: 1,
+		register(provider) {
+			if (!provider || typeof provider.capture !== "function") fail("DOCUMENT_TREE_PROVIDER_INVALID", "A document tree provider with capture() is required.");
+			const entry = Object.freeze({ capture: provider.capture.bind(provider) });
+			entries.push(entry);
+			let registered = true;
+			return () => {
+				if (!registered) return;
+				registered = false;
+				const index = entries.indexOf(entry);
+				if (index >= 0) entries.splice(index, 1);
+			};
+		},
+		capture(target, name, options) {
+			const normalized = captureOptions(options);
+			const entry = entries.at(-1);
+			if (!entry) fail("DOCUMENT_TREE_UNAVAILABLE", "Document Data is not loaded with DOCUMENT_DATA_MVP enabled.");
+			return captureResult(entry.capture(target, name, normalized));
+		}
+	});
+}
+/** Share one registry per runtime scope (the VM) across independently bundled extensions. */
+function getDocumentTreeRegistry(scope) {
+	if ((typeof scope !== "object" || scope === null) && typeof scope !== "function") fail("REGISTRY_SCOPE_INVALID", "A runtime-local scope object is required.");
+	const previous = Object.getOwnPropertyDescriptor(scope, documentTreeRegistrySymbol);
+	if (previous) {
+		if (!Object.hasOwn(previous, "value")) fail("REGISTRY_SCOPE_INVALID", "The registry slot cannot be an accessor.");
+		const registry = previous.value;
+		if (registry?.apiVersion !== 1 || typeof registry.register !== "function" || typeof registry.capture !== "function") fail("REGISTRY_INCOMPATIBLE", "An incompatible document tree registry occupies this scope.");
+		return registry;
+	}
+	const registry = createDocumentTreeRegistry();
+	Object.defineProperty(scope, documentTreeRegistrySymbol, {
 		value: registry,
 		enumerable: false,
 		writable: false,
@@ -33674,9 +33766,10 @@ function parseFragment(fragmentContext, html, options) {
 	return parser.getFragment();
 }
 var DocumentDataError = class extends Error {
-	constructor(code, message) {
-		super(`${code}: ${message}`);
+	constructor(code, detail) {
+		super(`${code}: ${detail}`);
 		this.code = code;
+		this.detail = detail;
 		this.name = "DocumentDataError";
 	}
 };
@@ -33684,13 +33777,21 @@ function parseHtmlDocument(source) {
 	checkSource(source);
 	let parsed;
 	try {
-		parsed = parseFragment(source);
+		parsed = parseFragment(source, { sourceCodeLocationInfo: true });
 	} catch (error) {
 		throw new DocumentDataError("INVALID_DOCUMENT", errorMessage(error, "Invalid HTML."));
 	}
 	const root = {
 		type: "root",
-		children: (parsed.childNodes ?? []).map(convertHtmlNode).filter((node) => !!node)
+		children: (parsed.childNodes ?? []).map(convertHtmlNode).filter((node) => !!node),
+		position: {
+			start: {
+				line: 1,
+				column: 1,
+				offset: 0
+			},
+			end: sourceEnd(source)
+		}
 	};
 	checkTree(root);
 	return {
@@ -33702,7 +33803,7 @@ function parseMarkdownDocument(source) {
 	checkSource(source);
 	let root;
 	try {
-		root = stripPositions(fromMarkdown(source));
+		root = fromMarkdown(source);
 	} catch (error) {
 		throw new DocumentDataError("INVALID_DOCUMENT", errorMessage(error, "Invalid Markdown."));
 	}
@@ -33731,25 +33832,70 @@ function replaceDocumentText(tree, location, text) {
 	const node = resolveLocation(copy, location);
 	if (copy.kind === "html") replaceHtmlNodeText(node, text);
 	else replaceMarkdownNodeText(node, text);
+	removeNodePositions(copy.root);
 	checkTree(copy.root);
 	return copy;
 }
 function convertHtmlNode(node) {
+	const position = htmlPosition(node.sourceCodeLocation);
+	const located = position ? { position } : {};
 	if (node.nodeName === "#text") return {
 		type: "text",
-		value: node.value ?? ""
+		value: node.value ?? "",
+		...located
 	};
 	if (node.nodeName === "#comment") return {
 		type: "comment",
-		value: node.data ?? ""
+		value: node.data ?? "",
+		...located
 	};
 	if (!node.tagName) return void 0;
 	return {
 		type: "element",
 		tagName: node.tagName,
 		attributes: Object.fromEntries((node.attrs ?? []).map((attribute) => [attribute.name, attribute.value]).sort(([a], [b]) => a.localeCompare(b))),
-		children: (node.childNodes ?? []).map(convertHtmlNode).filter((child) => !!child)
+		children: (node.childNodes ?? []).map(convertHtmlNode).filter((child) => !!child),
+		...located
 	};
+}
+/** parse5 already reports 1-based lines/columns and 0-based UTF-16 offsets; synthesized nodes have none. */
+function htmlPosition(location) {
+	const start = sourcePoint(location?.startLine, location?.startCol, location?.startOffset);
+	const end = sourcePoint(location?.endLine, location?.endCol, location?.endOffset);
+	return start && end ? {
+		start,
+		end
+	} : void 0;
+}
+function sourcePoint(line, column, offset) {
+	return Number.isSafeInteger(line) && Number.isSafeInteger(column) && Number.isSafeInteger(offset) ? {
+		line,
+		column,
+		offset
+	} : void 0;
+}
+/** The point just past the last character, counting CRLF, LF and CR as one line break each like mdast. */
+function sourceEnd(source) {
+	let line = 1;
+	let lineStart = 0;
+	for (let index = 0; index < source.length; index++) {
+		const code = source.charCodeAt(index);
+		if (code === 13 && source.charCodeAt(index + 1) === 10) index++;
+		if (code === 10 || code === 13) {
+			line++;
+			lineStart = index + 1;
+		}
+	}
+	return {
+		line,
+		column: source.length - lineStart + 1,
+		offset: source.length
+	};
+}
+function removeNodePositions(node) {
+	if (typeof node !== "object" || node === null) return;
+	delete node.position;
+	for (const child of childrenOf(node)) removeNodePositions(child);
 }
 function resolveLocation(tree, rawLocation) {
 	const location = rawLocation.trim();
@@ -33865,11 +34011,6 @@ function checkTree(root) {
 		for (const child of childrenOf(node)) visit(child, depth + 1);
 	};
 	visit(root, 0);
-}
-function stripPositions(value) {
-	if (Array.isArray(value)) return value.map(stripPositions);
-	if (typeof value !== "object" || value === null) return value;
-	return Object.fromEntries(Object.entries(value).filter(([key]) => key !== "position").map(([key, child]) => [key, stripPositions(child)]));
 }
 function errorMessage(error, fallback) {
 	return error instanceof Error ? error.message : fallback;
@@ -34307,6 +34448,64 @@ var DocumentNamedDataProvider = class {
 	}
 };
 //#endregion
+//#region src/document-tree-provider.ts
+/** Read-only capture adapter over the same binding store as the blocks and the Named Data provider. */
+var DocumentTreeCaptureProvider = class {
+	constructor(store) {
+		this.store = store;
+	}
+	capture(target, name, options) {
+		const key = typeof name === "string" ? name.trim() : "";
+		const binding = key ? this.store.get(target, key) : void 0;
+		if (!binding) throw new DocumentTreeError("DOCUMENT_NOT_FOUND", `Document does not exist: ${key}`);
+		let node;
+		try {
+			node = resolveLocation(binding.tree, options.location);
+		} catch (error) {
+			if (error instanceof DocumentDataError && (error.code === "INVALID_LOCATION" || error.code === "LOCATION_NOT_FOUND")) throw new DocumentTreeError(error.code, error.detail);
+			throw error;
+		}
+		return {
+			kind: binding.tree.kind,
+			revision: String(binding.revision),
+			root: copyDocumentNode(node, options)
+		};
+	}
+};
+/**
+* Deep-copy a stored node into plain JSON data. Values are counted exactly as the shared codec counts a
+* parsed JSON value (each value once, depth checked before the count, the copied node at depth 0), so the
+* copy fits the limits iff parsing its JSON text would. Copying stops at the first value over a limit.
+*/
+function copyDocumentNode(node, { positions, limits }) {
+	let count = 0;
+	const copy = (value, depth, isNode, holdsNodes) => {
+		if (depth > limits.maxDepth) throw new DocumentTreeError("DOCUMENT_LIMIT_EXCEEDED", `The captured tree is deeper than ${limits.maxDepth}.`);
+		if (++count > limits.maxNodes) throw new DocumentTreeError("DOCUMENT_LIMIT_EXCEEDED", `The captured tree has more than ${limits.maxNodes} values.`);
+		if (value === null || typeof value === "string" || typeof value === "boolean") return value;
+		if (typeof value === "number") return Number.isFinite(value) ? value : null;
+		if (Array.isArray(value)) {
+			const items = [];
+			for (const item of value) items.push(copy(omittedInJson(item) ? null : item, depth + 1, holdsNodes, false));
+			return items;
+		}
+		if (typeof value !== "object") throw new TypeError("Document trees contain only JSON data.");
+		const result = {};
+		for (const [key, item] of Object.entries(value)) {
+			if (omittedInJson(item) || isNode && key === "position" && !positions) continue;
+			Object.defineProperty(result, key, {
+				value: copy(item, depth + 1, false, isNode && key === "children"),
+				enumerable: true,
+				writable: true,
+				configurable: true
+			});
+		}
+		return result;
+	};
+	return copy(node, 0, true, false);
+}
+var omittedInJson = (value) => value === void 0 || typeof value === "function" || typeof value === "symbol";
+//#endregion
 //#region src/source-named-data-provider.ts
 /** Project-scoped read-only native source; stop releases handles without removing source text. */
 var SourceDocumentNamedDataProvider = class {
@@ -34395,7 +34594,9 @@ var DocumentDataExtension = class {
 		};
 		const runtime = Scratch.vm?.runtime;
 		if (enabled) {
-			this.provider = new DocumentNamedDataProvider({ get: (target, name) => this.registries.get(target)?.get(name) });
+			const bindings = { get: (target, name) => this.registries.get(target)?.get(name) };
+			this.provider = new DocumentNamedDataProvider(bindings);
+			if (Scratch.vm) this.unregisterTree = getDocumentTreeRegistry(Scratch.vm).register(new DocumentTreeCaptureProvider(bindings));
 			if (runtime) {
 				this.namedDataRegistry = installNamedDataRegistry(runtime);
 				this.namedDataRegistration = this.namedDataRegistry.registerProvider(this.provider, { lifetime: "persistent" });
@@ -34434,6 +34635,7 @@ var DocumentDataExtension = class {
 		this.runtime?.off?.("PROJECT_LOADED", this.projectReset);
 		this.clearRuntimeState();
 		this.fixedInputs.dispose();
+		this.unregisterTree?.();
 		this.unregisterSource?.();
 		this.sourceProvider?.dispose?.();
 		this.sourceStore?.dispose();

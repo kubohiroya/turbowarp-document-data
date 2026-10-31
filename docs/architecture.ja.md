@@ -1,7 +1,9 @@
 # アーキテクチャ
 
-名前付きbindingは`WeakMap<Target, Map<Name, Binding>>`に保持し、更新時はtree全体を検証してからimmutable replacementします。HTMLはparse5から正規化したtyped tree、Markdownは位置情報を除いたmdastとして保持します。
+名前付きbindingは`WeakMap<Target, Map<Name, Binding>>`に保持し、更新時はtree全体を検証してからimmutable replacementします。HTMLはparse5から正規化したtyped tree、Markdownはmdastとして保持します。どちらも解析時の原文での位置（mdastと同じ形の`position`）を持ち、編集した結果の木からはすべての位置を取り除きます。
 
 block APIはdocumentを操作し、Named Data providerは同じstoreをread-onlyで参照してHTTP向けのreplayable UTF-8 bodyを生成します。canonical `@kubohiroya/turbowarp-named-data` composition契約を実装し、persistent lifetimeでruntime共通registryへ登録します。project stopではprovider登録を維持し、bindingとsession handleだけをclearします。
+
+同じstoreをread-onlyで参照する木のproviderを、parserに依存しない`./composition`の木のregistry（VM単位）へ登録します。指定した部分木の上限付きの深いコピーを返し、registryもproviderも木やコピーを保持しません。
 
 HTMLとMarkdownの変換はlossyになり得るため暗黙に実行しません。また、parse済みHTMLをsafeまたはsanitizedとは表示しません。
