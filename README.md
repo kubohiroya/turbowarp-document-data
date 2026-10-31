@@ -34,7 +34,7 @@ This extension does **not** sanitize HTML, execute scripts, mount a browser DOM,
 - Parse and edit operations replace a binding only after the complete new tree passes validation.
 - Bindings and open body handles are released on `PROJECT_STOP_ALL`.
 
-Build with `pnpm run build`, then load `dist/document-data.js`. Package example: `@kubohiroya/turbowarp-document-data@0.5.0-rc.1`.
+Build with `pnpm run build`, then load `dist/document-data.js`. Package example: `@kubohiroya/turbowarp-document-data@0.5.0-rc.2`.
 
 ## Block reference
 
