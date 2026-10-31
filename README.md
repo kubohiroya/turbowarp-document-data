@@ -22,6 +22,8 @@ Run `pnpm run samples:build` after source/bundle changes and `pnpm run samples:c
 
 It parses HTML with parse5 and Markdown into mdast, stores the typed tree under a name, supports minimal text inspection/replacement, and deterministically serializes the native format. A Named Data provider exposes UTF-8 HTML or Markdown response bodies without depending on an unpublished shared package.
 
+Parsed trees keep the source position of each node. Another unsandboxed extension can copy all or part of a named tree, without a string in between, through the shared document tree registry in `./composition`. No block is added for this.
+
 This extension does **not** sanitize HTML, execute scripts, mount a browser DOM, or promise lossless conversion between HTML and Markdown. The existing `turbowarp-html` and `turbowarp-markdown` packages remain the fragment-construction APIs; this package owns parsed named-document lifecycle and body-provider behavior.
 
 ## Requirements and safety
@@ -204,6 +206,38 @@ Inert declaration referring to a persistent source document. It never executes a
 
 When the MVP is enabled, the provider is registered with the runtime registry using persistent lifetime. `PROJECT_STOP_ALL` clears target bindings and open session handles while keeping the provider registered. The provider exposes namespace `document`, kind `document`, target scope, opaque revisions, replayable byte bodies, and the shared `NAMED_DATA_*` error vocabulary. Only a document's native representation is accepted: HTML as `text/html; charset=utf-8`, Markdown as `text/markdown; charset=utf-8`.
 
+## Source positions
+
+Parsing keeps where each node came from in the parsed text. Markdown keeps the mdast `position`. HTML nodes get the same shape from parse5 source locations, and the HTML root covers the whole source.
+
+- Shape: `position: {start: {line, column, offset}, end: {line, column, offset}}`, as in mdast and unist. Lines and columns start at 1, offsets at 0, and `end` points just past the range.
+- Columns and offsets count UTF-16 code units, like JavaScript string indexes and Scratch `letter (n) of`; an emoji counts as 2. The CR of a CRLF counts in offsets, and CRLF, LF and CR each end one line.
+- Positions refer to the exact string that was parsed. For text from the `turbowarp-markdown`/`turbowarp-html` builders, that is the rendered string. The source text itself is not retained.
+- Nodes that parse5 adds without source text, such as an implicit `tbody`, have no `position`. An element with an omitted end tag ends where it was implicitly closed (the start of the next element).
+- `replace text in document` removes `position` from every node of the result, including the root, and inserted nodes get none. A tree's positions are therefore either all valid for its parsed source or absent: they are valid exactly when the root has a `position`.
+- `serialize document` and Named Data bodies are the same with or without positions.
+
+## Shared document tree registry
+
+`./composition` exports a parser-free registry for reading named document trees from another unsandboxed extension, such as `turbowarp-structured-data`. It keeps the tree in memory instead of serializing it, so no JSON text size limit applies.
+
+```js
+import {getDocumentTreeRegistry} from '@kubohiroya/turbowarp-document-data/composition';
+const {kind, revision, root} = getDocumentTreeRegistry(vm).capture(target, 'page', {
+  location: '$[1]',                       // $, $[0][1], or a simple HTML selector, as in the blocks
+  positions: false,                       // true keeps position on nodes that have one
+  limits: {maxDepth: 64, maxNodes: 50000}
+});
+```
+
+- `getDocumentTreeRegistry(scope)` returns the registry stored on `scope` under `Symbol.for('@kubohiroya/turbowarp-document-data/document-tree-registry/v1')` (`documentTreeRegistrySymbol`), so independently bundled extensions reach the same registry. Document Data uses the VM (`Scratch.vm`), as for the source-document registry. Look the registry up when a block runs; the load order of the extensions does not matter.
+- With `DOCUMENT_DATA_MVP` enabled, the extension registers its provider when constructed and unregisters it on `dispose()`. `PROJECT_STOP_ALL` and project replacement clear the documents and keep the registration. `register(provider)` returns a function that removes only that registration; the newest registration answers captures.
+- `capture(target, name, {location, positions, limits})` reads the target's named document (the name is trimmed as in the blocks) and returns `{kind, revision, root}`. `kind` is `html` or `markdown`, `revision` is the opaque revision the Named Data provider reports, and `root` is a fresh deep copy, made of plain JSON objects, of the node at `location`.
+- HTML nodes have the parsed shape: the whole document is `{"type": "root", "children": [...]}`, and nodes are `element` (`tagName`, `attributes`, `children`), `text` (`value`) and `comment` (`value`). Markdown nodes are mdast as produced by mdast-util-from-markdown v2; a major mdast update is a breaking change. Nodes have `position` only when `positions` is `true` (default `false`).
+- Changing a copy never changes the document. The registry keeps neither trees nor copies.
+- `limits` counts values like `@kubohiroya/turbowarp-yaml-json/codec` does when it parses JSON: every value (object, array, string, number, boolean or null) counts once, object keys do not count, and the copied node is at depth 0. Each tree level adds 2 to the depth (the node and its `children` array), and a `position` adds 3 below its node. A copy is accepted exactly when parsing its JSON text under the same depth and node limits would succeed. Copying stops at the first value over a limit, so an oversized copy is never built.
+- Errors are `DocumentTreeError` with a stable `code`: `DOCUMENT_TREE_UNAVAILABLE` (no provider: Document Data is not loaded, `DOCUMENT_DATA_MVP` is off, or it was disposed), `DOCUMENT_NOT_FOUND`, `INVALID_LOCATION`, `LOCATION_NOT_FOUND`, and `DOCUMENT_LIMIT_EXCEEDED`. Invalid arguments use `DOCUMENT_TREE_OPTIONS_INVALID`, `DOCUMENT_TREE_PROVIDER_INVALID`, `REGISTRY_SCOPE_INVALID`, or `REGISTRY_INCOMPATIBLE`. Separate bundles have separate classes, so check `code` rather than `instanceof`.
+
 ## Development
 
 Run `pnpm run check`.
@@ -220,7 +254,7 @@ MPL-2.0. See `THIRD_PARTY_NOTICES.md` for bundled MIT-licensed dependencies.
 
 The storage has `{formatVersion: 1, documents: {[id]: {id, filename, format, source, revision, schema?, docsURL?}}}`. The owner validates YAML/JSON through the shared `turbowarp-yaml-json/codec`, and optional inline JSON Schema through its explicit Schema API, before changing the raw source. Comments, spacing, CRLF, and Unicode remain exactly as supplied. No parse/render roundtrip is used to save text. Schema metadata uses `{id, schema}`; documentation URLs must be fixed HTTPS URLs without credentials.
 
-`./composition` exports only the canonical `getSourceDocumentRegistry`, provider/reference contracts, and Schema metadata normalization. It imports no YAML/JSON parser, GUI, App, Editor, DOM control, or native launcher. The prior embedded-YAML names are aliases to the same functions. The registry keeps the legacy v1 `Symbol.for` slot and opaque reference encoding, with a `sourceDocumentApiVersion: 1` capability. A real older registry that discards native format metadata is rejected explicitly; it is never silently replaced with a second registry. Reload compatible owner and host bundles together.
+`./composition` exports the canonical `getSourceDocumentRegistry`, provider/reference contracts, Schema metadata normalization, and the document tree registry described above. It imports no YAML/JSON/HTML/Markdown parser, GUI, App, Editor, DOM control, or native launcher. The prior embedded-YAML names are aliases to the same functions. The registry keeps the legacy v1 `Symbol.for` slot and opaque reference encoding, with a `sourceDocumentApiVersion: 1` capability. A real older registry that discards native format metadata is rejected explicitly; it is never silently replaced with a second registry. Reload compatible owner and host bundles together.
 
 `./source-documents` separately exports `createSourceDocumentStore(vm)` and `createSourceDocumentProvider(vm)`. The latter uses provider ID `document-data`; `list()` reports document IDs, filenames, native formats and optional Schema/docs, and `open(id)` returns `inspect/capture/prepare/commit/dispose`. Captures use opaque owner baselines. Project replacement, stale documents, removed documents, and forged prepared results cannot overwrite current source. A normal stop may replace the VM target array without changing the source's project identity.
 

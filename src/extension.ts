@@ -2,12 +2,13 @@ import {fixedInputRegistration} from './fixed-input-editors.js';
 import definitions from './block-definitions.json';
 import {extensionConfig, isDocumentDataMvpEnabled, isDocumentSourceEnabled} from './config.js';
 import {createSourceDocumentStore, createSourceDocumentProvider, type SourceDocumentVM} from './source-documents.js';
-import {getSourceDocumentRegistry, encodeSourceDocumentReference, SourceDocumentError} from './composition.js';
+import {getDocumentTreeRegistry, getSourceDocumentRegistry, encodeSourceDocumentReference, SourceDocumentError} from './composition.js';
 import {
   DocumentDataError, getDocumentText, parseHtmlDocument, parseMarkdownDocument,
   replaceDocumentText, serializeDocument, type DocumentKind, type DocumentTree
 } from './document.js';
 import {DocumentNamedDataProvider, type DocumentBinding} from './document-provider.js';
+import {DocumentTreeCaptureProvider} from './document-tree-provider.js';
 import {SourceDocumentNamedDataProvider} from './source-named-data-provider.js';
 import {
   bindNamedDataRegistryLifecycle,
@@ -42,13 +43,15 @@ export class DocumentDataExtension implements TurboWarpExtension {
   private readonly namedDataRegistry?: NamedDataRegistryService;
   private readonly namedDataRegistration?: NamedDataProviderRegistration;
   private readonly unbindNamedDataRegistryLifecycle?: () => void;
+  private readonly unregisterTree?: () => void;
 
   public constructor(private readonly enabled = isDocumentDataMvpEnabled(), private readonly sourceEnabled = isDocumentSourceEnabled()) {
     const runtime = Scratch.vm?.runtime;
     if (enabled) {
-      this.provider = new DocumentNamedDataProvider({
-        get: (target, name) => this.registries.get(target)?.get(name)
-      });
+      const bindings = {get: (target: object, name: string) => this.registries.get(target)?.get(name)};
+      this.provider = new DocumentNamedDataProvider(bindings);
+      // Same VM scope as the source-document registry; consumers look it up when their block runs.
+      if (Scratch.vm) this.unregisterTree = getDocumentTreeRegistry(Scratch.vm).register(new DocumentTreeCaptureProvider(bindings));
       if (runtime) {
         this.namedDataRegistry = installNamedDataRegistry(runtime);
         this.namedDataRegistration = this.namedDataRegistry.registerProvider(
@@ -95,6 +98,7 @@ export class DocumentDataExtension implements TurboWarpExtension {
     this.runtime?.off?.('PROJECT_LOADED', this.projectReset);
     this.clearRuntimeState();
     this.fixedInputs.dispose();
+    this.unregisterTree?.();
     this.unregisterSource?.();
     this.sourceProvider?.dispose?.();
     this.sourceStore?.dispose();

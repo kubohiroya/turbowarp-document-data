@@ -9,11 +9,15 @@ export const DOCUMENT_MAX_NODES = 50_000;
 export const DOCUMENT_MAX_DEPTH = 64;
 
 export type DocumentKind = 'html' | 'markdown';
+/** A point in the parsed source: 1-based line/column, 0-based offset, UTF-16 code units. */
+export interface SourcePoint {line: number; column: number; offset: number}
+/** The mdast/unist position shape; `end` points just past the range. */
+export interface SourcePosition {start: SourcePoint; end: SourcePoint}
 export type HtmlNode =
-  | {type: 'element'; tagName: string; attributes: Record<string, string>; children: HtmlNode[]}
-  | {type: 'text'; value: string}
-  | {type: 'comment'; value: string};
-export interface HtmlRoot {type: 'root'; children: HtmlNode[]}
+  | {type: 'element'; tagName: string; attributes: Record<string, string>; children: HtmlNode[]; position?: SourcePosition}
+  | {type: 'text'; value: string; position?: SourcePosition}
+  | {type: 'comment'; value: string; position?: SourcePosition};
+export interface HtmlRoot {type: 'root'; children: HtmlNode[]; position?: SourcePosition}
 export type DocumentTree =
   | {kind: 'html'; root: HtmlRoot}
   | {kind: 'markdown'; root: MarkdownRoot};
@@ -28,10 +32,19 @@ export type DocumentErrorCode =
   | 'LOSSY_CONVERSION';
 
 export class DocumentDataError extends Error {
-  public constructor(public readonly code: DocumentErrorCode, message: string) {
-    super(`${code}: ${message}`);
+  public constructor(public readonly code: DocumentErrorCode, public readonly detail: string) {
+    super(`${code}: ${detail}`);
     this.name = 'DocumentDataError';
   }
+}
+
+interface Parse5Location {
+  startLine?: number;
+  startCol?: number;
+  startOffset?: number;
+  endLine?: number;
+  endCol?: number;
+  endOffset?: number;
 }
 
 interface Parse5Node {
@@ -41,19 +54,21 @@ interface Parse5Node {
   data?: string;
   attrs?: Array<{name: string; value: string}>;
   childNodes?: Parse5Node[];
+  sourceCodeLocation?: Parse5Location | null;
 }
 
 export function parseHtmlDocument(source: string): DocumentTree {
   checkSource(source);
   let parsed: Parse5Node;
   try {
-    parsed = parseFragment(source) as unknown as Parse5Node;
+    parsed = parseFragment(source, {sourceCodeLocationInfo: true}) as unknown as Parse5Node;
   } catch (error) {
     throw new DocumentDataError('INVALID_DOCUMENT', errorMessage(error, 'Invalid HTML.'));
   }
   const root: HtmlRoot = {
     type: 'root',
-    children: (parsed.childNodes ?? []).map(convertHtmlNode).filter((node): node is HtmlNode => !!node)
+    children: (parsed.childNodes ?? []).map(convertHtmlNode).filter((node): node is HtmlNode => !!node),
+    position: {start: {line: 1, column: 1, offset: 0}, end: sourceEnd(source)}
   };
   checkTree(root);
   return {kind: 'html', root};
@@ -63,7 +78,7 @@ export function parseMarkdownDocument(source: string): DocumentTree {
   checkSource(source);
   let root: MarkdownRoot;
   try {
-    root = stripPositions(fromMarkdown(source));
+    root = fromMarkdown(source);
   } catch (error) {
     throw new DocumentDataError('INVALID_DOCUMENT', errorMessage(error, 'Invalid Markdown.'));
   }
@@ -102,13 +117,17 @@ export function replaceDocumentText(
   const node = resolveLocation(copy, location);
   if (copy.kind === 'html') replaceHtmlNodeText(node as HtmlRoot | HtmlNode, text);
   else replaceMarkdownNodeText(node as MarkdownRoot | MarkdownNode, text);
+  // Positions describe the parsed source only; an edited tree carries none at all.
+  removeNodePositions(copy.root);
   checkTree(copy.root);
   return copy;
 }
 
 function convertHtmlNode(node: Parse5Node): HtmlNode | undefined {
-  if (node.nodeName === '#text') return {type: 'text', value: node.value ?? ''};
-  if (node.nodeName === '#comment') return {type: 'comment', value: node.data ?? ''};
+  const position = htmlPosition(node.sourceCodeLocation);
+  const located = position ? {position} : {};
+  if (node.nodeName === '#text') return {type: 'text', value: node.value ?? '', ...located};
+  if (node.nodeName === '#comment') return {type: 'comment', value: node.data ?? '', ...located};
   if (!node.tagName) return undefined;
   return {
     type: 'element',
@@ -118,11 +137,46 @@ function convertHtmlNode(node: Parse5Node): HtmlNode | undefined {
         .map((attribute): [string, string] => [attribute.name, attribute.value])
         .sort(([a], [b]) => a.localeCompare(b))
     ),
-    children: (node.childNodes ?? []).map(convertHtmlNode).filter((child): child is HtmlNode => !!child)
+    children: (node.childNodes ?? []).map(convertHtmlNode).filter((child): child is HtmlNode => !!child),
+    ...located
   };
 }
 
-function resolveLocation(tree: DocumentTree, rawLocation: string): unknown {
+/** parse5 already reports 1-based lines/columns and 0-based UTF-16 offsets; synthesized nodes have none. */
+function htmlPosition(location: Parse5Location | null | undefined): SourcePosition | undefined {
+  const start = sourcePoint(location?.startLine, location?.startCol, location?.startOffset);
+  const end = sourcePoint(location?.endLine, location?.endCol, location?.endOffset);
+  return start && end ? {start, end} : undefined;
+}
+
+function sourcePoint(line: unknown, column: unknown, offset: unknown): SourcePoint | undefined {
+  return Number.isSafeInteger(line) && Number.isSafeInteger(column) && Number.isSafeInteger(offset)
+    ? {line: line as number, column: column as number, offset: offset as number}
+    : undefined;
+}
+
+/** The point just past the last character, counting CRLF, LF and CR as one line break each like mdast. */
+function sourceEnd(source: string): SourcePoint {
+  let line = 1;
+  let lineStart = 0;
+  for (let index = 0; index < source.length; index++) {
+    const code = source.charCodeAt(index);
+    if (code === 13 && source.charCodeAt(index + 1) === 10) index++;
+    if (code === 10 || code === 13) {
+      line++;
+      lineStart = index + 1;
+    }
+  }
+  return {line, column: source.length - lineStart + 1, offset: source.length};
+}
+
+function removeNodePositions(node: unknown): void {
+  if (typeof node !== 'object' || node === null) return;
+  delete (node as {position?: unknown}).position;
+  for (const child of childrenOf(node)) removeNodePositions(child);
+}
+
+export function resolveLocation(tree: DocumentTree, rawLocation: string): unknown {
   const location = rawLocation.trim();
   if (location === '$') return tree.root;
   if (tree.kind === 'html' && /^[#.a-zA-Z][\w-]*$/.test(location)) {
@@ -237,16 +291,6 @@ function checkTree(root: unknown): void {
     for (const child of childrenOf(node)) visit(child, depth + 1);
   };
   visit(root, 0);
-}
-
-function stripPositions<T>(value: T): T {
-  if (Array.isArray(value)) return value.map(stripPositions) as T;
-  if (typeof value !== 'object' || value === null) return value;
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>)
-      .filter(([key]) => key !== 'position')
-      .map(([key, child]) => [key, stripPositions(child)])
-  ) as T;
 }
 
 function errorMessage(error: unknown, fallback: string): string {

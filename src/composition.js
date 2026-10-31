@@ -14,3 +14,7 @@ export {
 } from './source-document/registry.js';
 
 export {normalizeSourceDocumentPreview} from './source-document/preview.js';
+export {
+  DocumentTreeError, documentTreeErrorCodes, documentTreeRegistrySymbol,
+  createDocumentTreeRegistry, getDocumentTreeRegistry
+} from './document-tree/registry.js';
