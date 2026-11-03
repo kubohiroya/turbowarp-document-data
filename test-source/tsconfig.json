@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.source-integration.json",
+  "compilerOptions": {
+    "noUncheckedIndexedAccess": false,
+    "rootDir": "..",
+    "noEmit": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "."
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "name": "@kubohiroya/turbowarp-document-data",
-  "version": "0.5.0-rc.2",
+  "version": "0.6.0-rc.0",
   "description": "Persistent YAML/JSON source documents and HTML/Markdown document trees for TurboWarp.",
   "author": {
     "name": "Hiroya Kubo",
@@ -52,21 +52,24 @@
   },
   "scripts": {
     "dev": "vite build --watch",
-    "typecheck": "tsc --noEmit",
-    "build": "vite build && node scripts/build-composition.mjs",
+    "typecheck": "tsc --noEmit && pnpm run typecheck:source-integration",
+    "build": "vite build && node scripts/build-composition.mjs && pnpm run build:source-integration",
     "lint": "eslint src tests scripts vite.config.ts eslint.config.ts",
-    "test": "vitest run",
+    "test": "vitest run && pnpm run test:source-integration",
     "docs": "node scripts/generate-readme.ts",
     "docs:check": "node scripts/check-docs.ts",
     "template:readme": "node scripts/apply-readme-template.ts",
     "repo:check": "node scripts/check-repo.ts",
     "pack:check": "npm pack --dry-run --ignore-scripts",
-    "check": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run docs:check && pnpm run check:dist && pnpm run repo:check && pnpm run pack:check && pnpm run samples:check",
-    "check:dist": "pnpm run build && node scripts/check-dist.ts",
+    "check": "ppnpm run typecheck && ppnpm run lint && ppnpm run test && ppnpm run docs:check && ppnpm run check:dist && ppnpm run repo:check && ppnpm run pack:check && ppnpm run samples:check",
+    "check:dist": "ppnpm run build && node scripts/check-dist.ts",
     "samples:build": "node scripts/build-samples.mjs",
     "samples:check": "node scripts/build-samples.mjs --check && node --test scripts/verify-samples.mjs",
     "pages:build": "node scripts/prepare-pages.mjs",
-    "build:composition": "node scripts/build-composition.mjs"
+    "build:composition": "node scripts/build-composition.mjs && pnpm run build:source-integration",
+    "build:source-integration": "tsc -p tsconfig.source-integration.json",
+    "test:source-integration": "node --test test-source/*.test.ts",
+    "typecheck:source-integration": "tsc --noEmit -p tsconfig.source-integration.json && tsc --noEmit -p test-source"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
@@ -85,11 +88,12 @@
     "vitest": "^5.0.0"
   },
   "dependencies": {
-    "@kubohiroya/turbowarp-yaml-json": "0.8.0-rc.0",
+    "@kubohiroya/turbowarp-yaml-json": "0.9.0-rc.0",
     "mdast-util-from-markdown": "^2.0.3",
     "mdast-util-to-markdown": "^2.1.2",
     "parse5": "^8.0.1",
-    "@kubohiroya/turbowarp-named-data": "0.8.0-rc.0"
+    "@kubohiroya/turbowarp-named-data": "0.8.0-rc.0",
+    "@kubohiroya/turbowarp-document-source": "0.2.0-rc.0"
   },
   "exports": {
     "./composition": {
@@ -101,7 +105,24 @@
       "import": "./dist/source-documents.js"
     },
     "./extension": "./dist/document-data.js",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./document-source": {
+      "types": "./dist/source-integration/index.d.ts",
+      "import": "./dist/source-integration/index.js"
+    },
+    "./project-views": {
+      "types": "./dist/source-integration/project-views.d.ts",
+      "import": "./dist/source-integration/project-views.js"
+    },
+    "./view-metadata": {
+      "types": "./dist/source-integration/view-metadata.d.ts",
+      "import": "./dist/source-integration/view-metadata.js"
+    },
+    "./document-views": {
+      "types": "./dist/source-integration/document-views.d.ts",
+      "import": "./dist/source-integration/document-views.js"
+    },
+    "./assets/yaml-file.svg": "./assets/yaml-file.svg"
   },
   "sideEffects": [
     "./src/index.ts",
