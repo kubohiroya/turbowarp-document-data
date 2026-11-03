@@ -67,681 +67,7 @@ var extensionConfig = {
 	blockIconURI: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3QgeD0iNCIgeT0iOCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iIzhBNTVENyIvPjxwYXRoIGQ9Ik0xNyAxNGg5bDYgNnYxNGEyIDIgMCAwIDEtMiAySDE3YTIgMiAwIDAgMS0yLTJWMTZhMiAyIDAgMCAxIDItMnoiIGZpbGw9IiNmZmYiLz48cGF0aCBkPSJNMjYgMTR2Nmg2IiBmaWxsPSIjOEE1NUQ3Ii8+PHBhdGggZD0iTTE5IDI3aDEwTTE5IDMyaDciIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzhBNTVENyIgc3Ryb2tlLXdpZHRoPSIyLjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg=="
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/@kubohiroya+turbowarp-extension-data-editor@0.5.0_react@18.3.1/node_modules/@kubohiroya/turbowarp-extension-data-editor/dist/fixed-input-schema.js
-var numberToken = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/u;
-var invalidNumber = Object.freeze({
-	kind: "invalid",
-	code: "fixed-number-input-invalid"
-});
-/**
-* Parse a NEW numeric draft according to NP-finite-new-input-v1.
-* Never apply this to opening/no-op raw values or use it as an owner validator.
-* Keep the validated token so negative zero, precision and exponent spelling survive.
-*/
-function parseFixedNumberInput(input) {
-	if (typeof input === "number") {
-		if (!Number.isFinite(input)) return invalidNumber;
-		return Object.freeze({
-			kind: "valid",
-			token: Object.is(input, -0) ? "-0" : String(input),
-			value: input
-		});
-	}
-	if (typeof input !== "string") return invalidNumber;
-	const token = input.trim();
-	if (!numberToken.test(token)) return invalidNumber;
-	const value = Number(token);
-	return Number.isFinite(value) ? Object.freeze({
-		kind: "valid",
-		token,
-		value
-	}) : invalidNumber;
-}
-var block_editor_fixed_inputs_schema_default = {
-	$schema: "https://json-schema.org/draft/2020-12/schema",
-	$id: "https://kubohiroya.github.io/turbowarp-document-data/schemas/block-editor-fixed-inputs.schema.json",
-	$defs: { "serializeDocument": {
-		"type": "object",
-		"properties": { "FORMAT": {
-			"type": "string",
-			"enum": ["html", "markdown"]
-		} },
-		"required": ["FORMAT"],
-		"additionalProperties": true
-	} }
-};
-//#endregion
-//#region src/fixed-input-schema.ts
-var repository$1 = "turbowarp-document-data";
-/** The owner JSON document is canonical; this selects a primitive field fragment. */
-function fixedInputBundle(opcode, argument) {
-	const source = {
-		repository: repository$1,
-		path: "schemas/block-editor-fixed-inputs.schema.json",
-		symbol: `#/$defs/${opcode}/properties/${argument}`
-	};
-	const blocks = block_editor_fixed_inputs_schema_default.$defs;
-	return {
-		identity: {
-			ownerId: repository$1,
-			contractId: opcode,
-			revision: "fixed-inputs-v1",
-			variantId: argument
-		},
-		dialect: "2020-12",
-		root: {
-			retrievalUri: block_editor_fixed_inputs_schema_default.$id,
-			document: blocks[opcode].properties[argument],
-			artifact: {
-				role: "canonical-schema",
-				source
-			}
-		},
-		resources: [],
-		provenance: {
-			canonicalSources: [source, {
-				repository: repository$1,
-				path: "src/extension.ts",
-				symbol: opcode
-			}],
-			generatedFiles: [],
-			referenceSchemas: [],
-			generationSources: []
-		}
-	};
-}
-//#endregion
-//#region src/fixed-input-editors.ts
-var extensionId = "kubohiroyadocumentdata";
-var repository = "turbowarp-document-data";
-var fields = [{
-	"opcode": "serializeDocument",
-	"argument": "FORMAT",
-	"control": "enum",
-	"choices": ["html", "markdown"],
-	"normalization": "identity",
-	"shape": "menu-shadow",
-	"maxBytes": false
-}];
-function literalString(value) {
-	if (typeof value !== "string") throw new TypeError("Expected a string literal.");
-	return value;
-}
-/** Legacy nonempty finite aliases are projections; opening never creates a write. */
-function existingFixedNumber(value) {
-	if (typeof value !== "string" && typeof value !== "number" || typeof value === "string" && value.trim() === "") throw new TypeError("Unavailable numeric projection.");
-	const number = Number(value);
-	if (!Number.isFinite(number)) throw new TypeError("Unavailable numeric projection.");
-	return number;
-}
-function normalizeChoice(field, raw) {
-	if (field.normalization === "lowercase") return raw.toLowerCase();
-	if (field.normalization === "method") return raw.trim().toUpperCase();
-	if (field.normalization === "trim") return raw.trim();
-	if (field.normalization === "parse-format") {
-		const lower = raw.trim().toLowerCase();
-		return lower === "json" ? "JSON" : lower === "yaml" ? "YAML" : lower === "auto" ? "auto" : raw;
-	}
-	return raw;
-}
-function binding(field) {
-	return {
-		argument: field.argument,
-		schemaBundle: fixedInputBundle(field.opcode, field.argument),
-		control: {
-			kind: field.control,
-			...field.control === "enum" ? { choices: field.choices.map((value) => ({ value })) } : {}
-		},
-		read(value) {
-			return field.control === "number" ? existingFixedNumber(value) : normalizeChoice(field, literalString(value));
-		},
-		encode(value) {
-			if (field.control === "number") {
-				const parsed = parseFixedNumberInput(value);
-				if (parsed.kind !== "valid") throw new TypeError("Invalid new numeric input.");
-				return parsed.token;
-			}
-			const raw = literalString(value), normalized = normalizeChoice(field, raw);
-			if (!field.choices.includes(normalized)) throw new TypeError("Unsupported fixed choice.");
-			return field.shape === "menu-shadow" || field.shape === "direct-field-dropdown" ? normalized : raw;
-		},
-		validateCandidate(value) {
-			try {
-				if (field.control === "number") {
-					const number = existingFixedNumber(value);
-					if (field.maxBytes && (!Number.isSafeInteger(Math.trunc(number)) || Math.trunc(number) < 1)) return [{ message: "Invalid named body size." }];
-					return [];
-				}
-				return field.choices.includes(normalizeChoice(field, literalString(value))) ? [] : [{ message: "Unsupported fixed choice." }];
-			} catch {
-				return [{ message: "Invalid fixed input." }];
-			}
-		}
-	};
-}
-var fixedInputEditors = [...new Set(fields.map((f) => f.opcode))].map((opcode) => ({
-	apiVersion: 1,
-	extensionId,
-	editorId: `${opcode}-fixed-inputs`,
-	opcodes: [`${extensionId}_${opcode}`],
-	contractId: `${repository}/${opcode}`,
-	contractRevision: "fixed-inputs-v1",
-	bindings: fields.filter((field) => field.opcode === opcode).map(binding),
-	validationContext: () => ({
-		consumerId: repository,
-		nowMs: 0,
-		settings: null
-	})
-}));
-/** Registration follows the advertised opcode membership and the optional host capability. */
-function fixedInputRegistration(scratch) {
-	const host = scratch ?? {};
-	let active;
-	let membership = "";
-	const removers = [];
-	let stopped = false;
-	const clear = () => {
-		host.vm?.runtime?.off?.("RUNTIME_DISPOSED", shutdown);
-		for (const remove of removers.splice(0).reverse()) remove();
-		active = void 0;
-		membership = "";
-	};
-	const shutdown = () => {
-		stopped = true;
-		clear();
-	};
-	return {
-		ensure(visibleOpcodes) {
-			const api = host.gui?.blockEditors;
-			const definitions = fixedInputEditors.filter((definition) => definition.opcodes.every((opcode) => visibleOpcodes.includes(opcode)));
-			const key = definitions.map((definition) => definition.editorId).join(",");
-			if (stopped || api === active && membership === key) return;
-			clear();
-			if (api?.apiVersion !== 1 || typeof api.registerFixedInputEditor !== "function" || !definitions.length) return;
-			try {
-				for (const definition of definitions) {
-					const remove = api.registerFixedInputEditor.call(api, definition);
-					if (typeof remove !== "function") throw new TypeError("Invalid fixed input cleanup.");
-					removers.push(remove);
-				}
-				active = api;
-				membership = key;
-				host.vm?.runtime?.on?.("RUNTIME_DISPOSED", shutdown);
-			} catch (error) {
-				clear();
-				throw error;
-			}
-		},
-		dispose: shutdown
-	};
-}
-var block_definitions_default = {
-	extensionName: "Document Data",
-	menus: {
-		"documentFormat": {
-			"acceptReporters": true,
-			"items": ["html", "markdown"]
-		},
-		"sourceDocuments": {
-			"acceptReporters": false,
-			"items": ["—"]
-		}
-	},
-	blocks: [
-		{
-			"opcode": "parseHtml",
-			"blockType": "COMMAND",
-			"text": "parse HTML [TEXT] as document [NAME]",
-			"description": "Parse HTML into a target-local named document tree. This does not sanitize HTML.",
-			"arguments": {
-				"TEXT": {
-					"type": "STRING",
-					"defaultValue": "<p>Hello</p>"
-				},
-				"NAME": {
-					"type": "STRING",
-					"defaultValue": "page"
-				}
-			}
-		},
-		{
-			"opcode": "parseMarkdown",
-			"blockType": "COMMAND",
-			"text": "parse Markdown [TEXT] as document [NAME]",
-			"description": "Parse Markdown into a target-local named syntax tree.",
-			"arguments": {
-				"TEXT": {
-					"type": "STRING",
-					"defaultValue": "# Hello"
-				},
-				"NAME": {
-					"type": "STRING",
-					"defaultValue": "page"
-				}
-			}
-		},
-		{
-			"opcode": "hasDocument",
-			"blockType": "BOOLEAN",
-			"text": "document [NAME] exists?",
-			"description": "Report whether the current target has the named document.",
-			"arguments": { "NAME": {
-				"type": "STRING",
-				"defaultValue": "page"
-			} }
-		},
-		{
-			"opcode": "deleteDocument",
-			"blockType": "COMMAND",
-			"text": "delete document [NAME]",
-			"description": "Delete the named document from the current target.",
-			"arguments": { "NAME": {
-				"type": "STRING",
-				"defaultValue": "page"
-			} }
-		},
-		{
-			"opcode": "documentKind",
-			"blockType": "REPORTER",
-			"text": "kind of document [NAME]",
-			"description": "Return html or markdown.",
-			"arguments": { "NAME": {
-				"type": "STRING",
-				"defaultValue": "page"
-			} }
-		},
-		{
-			"opcode": "getDocumentText",
-			"blockType": "REPORTER",
-			"text": "text in document [NAME] at [LOCATION]",
-			"description": "Get text at the root, a numeric tree path, or a simple HTML selector.",
-			"arguments": {
-				"NAME": {
-					"type": "STRING",
-					"defaultValue": "page"
-				},
-				"LOCATION": {
-					"type": "STRING",
-					"defaultValue": "$"
-				}
-			}
-		},
-		{
-			"opcode": "replaceDocumentText",
-			"blockType": "COMMAND",
-			"text": "replace text in document [NAME] at [LOCATION] with [TEXT]",
-			"description": "Immutably replace text at the selected node.",
-			"arguments": {
-				"NAME": {
-					"type": "STRING",
-					"defaultValue": "page"
-				},
-				"LOCATION": {
-					"type": "STRING",
-					"defaultValue": "$"
-				},
-				"TEXT": {
-					"type": "STRING",
-					"defaultValue": "Hello"
-				}
-			}
-		},
-		{
-			"opcode": "serializeDocument",
-			"blockType": "REPORTER",
-			"text": "serialize document [NAME] as [FORMAT]",
-			"description": "Deterministically serialize a document in its native format. Cross-format conversion is rejected as lossy.",
-			"arguments": {
-				"NAME": {
-					"type": "STRING",
-					"defaultValue": "page"
-				},
-				"FORMAT": {
-					"type": "STRING",
-					"defaultValue": "html",
-					"menu": "documentFormat"
-				}
-			}
-		},
-		{
-			"opcode": "createYamlSource",
-			"blockType": "COMMAND",
-			"text": "store YAML [TEXT] as source document [NAME] file [FILENAME]",
-			"description": "Validate YAML and retain its exact source in SB3 extension storage. Enabled by startup DOCUMENT_SOURCE.",
-			"arguments": {
-				"TEXT": {
-					"type": "STRING",
-					"defaultValue": "value: example\n"
-				},
-				"NAME": {
-					"type": "STRING",
-					"defaultValue": "settings"
-				},
-				"FILENAME": {
-					"type": "STRING",
-					"defaultValue": "settings.yaml"
-				}
-			}
-		},
-		{
-			"opcode": "createJsonSource",
-			"blockType": "COMMAND",
-			"text": "store JSON [TEXT] as source document [NAME] file [FILENAME]",
-			"description": "Validate JSON and retain its exact source in SB3 extension storage. Enabled by startup DOCUMENT_SOURCE.",
-			"arguments": {
-				"TEXT": {
-					"type": "STRING",
-					"defaultValue": "{\"value\":\"example\"}"
-				},
-				"NAME": {
-					"type": "STRING",
-					"defaultValue": "settings"
-				},
-				"FILENAME": {
-					"type": "STRING",
-					"defaultValue": "settings.json"
-				}
-			}
-		},
-		{
-			"opcode": "hasSourceDocument",
-			"blockType": "BOOLEAN",
-			"text": "source document [NAME] exists?",
-			"description": "Report whether the current project owns a persistent source document.",
-			"arguments": { "NAME": {
-				"type": "STRING",
-				"defaultValue": "settings"
-			} }
-		},
-		{
-			"opcode": "getSourceDocument",
-			"blockType": "REPORTER",
-			"text": "original source of document [NAME]",
-			"description": "Return the original YAML/JSON text including comments and line endings.",
-			"arguments": { "NAME": {
-				"type": "STRING",
-				"defaultValue": "settings"
-			} }
-		},
-		{
-			"opcode": "sourceDocumentFormat",
-			"blockType": "REPORTER",
-			"text": "format of source document [NAME]",
-			"description": "Return yaml or json without converting the source.",
-			"arguments": { "NAME": {
-				"type": "STRING",
-				"defaultValue": "settings"
-			} }
-		},
-		{
-			"opcode": "deleteSourceDocument",
-			"blockType": "COMMAND",
-			"text": "delete source document [NAME]",
-			"description": "Remove one persistent source document from the project.",
-			"arguments": { "NAME": {
-				"type": "STRING",
-				"defaultValue": "settings"
-			} }
-		},
-		{
-			"opcode": "sourceDocument",
-			"blockType": "HAT",
-			"text": "embedded document [DOCUMENT]",
-			"description": "Inert declaration referring to a persistent source document. It never executes a document.",
-			"arguments": { "DOCUMENT": {
-				"type": "STRING",
-				"defaultValue": "",
-				"menu": "sourceDocuments"
-			} }
-		}
-	]
-};
-//#endregion
-//#region \0@oxc-project+runtime@0.148.0/helpers/esm/typeof.js
-function _typeof(o) {
-	"@babel/helpers - typeof";
-	return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function(o) {
-		return typeof o;
-	} : function(o) {
-		return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o;
-	}, _typeof(o);
-}
-//#endregion
-//#region \0@oxc-project+runtime@0.148.0/helpers/esm/toPrimitive.js
-function toPrimitive(t, r) {
-	if ("object" != _typeof(t) || !t) return t;
-	var e = t[Symbol.toPrimitive];
-	if (void 0 !== e) {
-		var i = e.call(t, r || "default");
-		if ("object" != _typeof(i)) return i;
-		throw new TypeError("@@toPrimitive must return a primitive value.");
-	}
-	return ("string" === r ? String : Number)(t);
-}
-//#endregion
-//#region \0@oxc-project+runtime@0.148.0/helpers/esm/toPropertyKey.js
-function toPropertyKey(t) {
-	var i = toPrimitive(t, "string");
-	return "symbol" == _typeof(i) ? i : i + "";
-}
-//#endregion
-//#region \0@oxc-project+runtime@0.148.0/helpers/esm/defineProperty.js
-function _defineProperty(e, r, t) {
-	return (r = toPropertyKey(r)) in e ? Object.defineProperty(e, r, {
-		value: t,
-		enumerable: !0,
-		configurable: !0,
-		writable: !0
-	}) : e[r] = t, e;
-}
-//#endregion
-//#region ../document-source-readme/dist/wire.js
-var PREFIX = "tw-embedded-yaml:1:";
-var SourceDocumentError = class extends Error {
-	constructor(code, message) {
-		super(message);
-		_defineProperty(this, "code", void 0);
-		this.name = "SourceDocumentError";
-		this.code = code;
-	}
-};
-function fail$2(code, message) {
-	throw new SourceDocumentError(code, message);
-}
-var hasControlCharacters = (value) => Array.from(value).some((character) => {
-	const code = character.codePointAt(0);
-	return code < 32 || code === 127;
-});
-var identifier = (value, name) => {
-	if (typeof value !== "string" || !value.length || value.length > 1024 || hasControlCharacters(value)) fail$2("REFERENCE_INVALID", `${name} must be a bounded nonempty identifier.`);
-	return value;
-};
-function encodeSourceDocumentReference(reference) {
-	if (!reference || typeof reference !== "object") fail$2("REFERENCE_INVALID", "A document reference is required.");
-	const providerId = identifier(reference.providerId, "providerId");
-	const documentId = identifier(reference.documentId, "documentId");
-	try {
-		return `${PREFIX}${encodeURIComponent(providerId)}:${encodeURIComponent(documentId)}`;
-	} catch {
-		return fail$2("REFERENCE_INVALID", "The reference contains invalid Unicode.");
-	}
-}
-function decodeSourceDocumentReference(value) {
-	if (typeof value !== "string" || value.length > 8192 || !value.startsWith(PREFIX)) fail$2("REFERENCE_INVALID", "The block does not contain a valid source document reference.");
-	const parts = value.slice(19).split(":");
-	if (parts.length !== 2) fail$2("REFERENCE_INVALID", "The source document reference is malformed.");
-	let reference;
-	try {
-		reference = {
-			providerId: decodeURIComponent(parts[0]),
-			documentId: decodeURIComponent(parts[1])
-		};
-	} catch {
-		return fail$2("REFERENCE_INVALID", "The source document reference encoding is invalid.");
-	}
-	if (encodeSourceDocumentReference(reference) !== value) fail$2("REFERENCE_INVALID", "The source document reference is not canonical.");
-	return Object.freeze(reference);
-}
-//#endregion
-//#region ../document-source-readme/dist/schema.js
-var sourceDocumentSchemaLimits = Object.freeze({
-	maxBytes: 1048576,
-	maxDepth: 64,
-	maxNodes: 1e5
-});
-/** Copy finite JSON without invoking accessors or serialization hooks. This does not interpret JSON Schema. */
-function normalizeSourceDocumentSchema(metadata) {
-	if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) fail$2("SCHEMA_INVALID", "Inline schema metadata must be an object.");
-	const properties = Object.getOwnPropertyDescriptors(metadata);
-	if (!properties.id || !Object.hasOwn(properties.id, "value") || !properties.schema || !Object.hasOwn(properties.schema, "value") || Object.keys(properties).some((key) => key !== "id" && key !== "schema")) fail$2("SCHEMA_INVALID", "Inline schema metadata requires only id and schema.");
-	const id = identifier(properties.id.value, "schema id");
-	const root = properties.schema.value;
-	if (!root || typeof root !== "object" || Array.isArray(root)) fail$2("SCHEMA_INVALID", "An inline JSON Schema object is required.");
-	const path = /* @__PURE__ */ new Set();
-	let nodes = 0, characters = 0;
-	const clone = (value, depth) => {
-		if (++nodes > sourceDocumentSchemaLimits.maxNodes || depth > sourceDocumentSchemaLimits.maxDepth) fail$2("SCHEMA_LIMIT", "The inline schema is too deeply nested or has too many values.");
-		if (value === null || typeof value === "boolean") return value;
-		if (typeof value === "number") {
-			if (!Number.isFinite(value)) fail$2("SCHEMA_INVALID", "Schema numbers must be finite.");
-			return value;
-		}
-		if (typeof value === "string") {
-			characters += value.length;
-			if (characters > sourceDocumentSchemaLimits.maxBytes) fail$2("SCHEMA_LIMIT", "The inline schema exceeds its size limit.");
-			return value;
-		}
-		if (!value || typeof value !== "object") fail$2("SCHEMA_INVALID", "Schemas must contain only JSON values.");
-		if (path.has(value)) fail$2("SCHEMA_INVALID", "Cyclic schema payloads are unsupported.");
-		if (Object.getOwnPropertySymbols(value).length) fail$2("SCHEMA_INVALID", "Schemas cannot contain symbol properties.");
-		const prototype = Object.getPrototypeOf(value);
-		if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) fail$2("SCHEMA_INVALID", "Schemas must use plain JSON objects.");
-		path.add(value);
-		const result = Array.isArray(value) ? [] : {};
-		const properties = Object.getOwnPropertyDescriptors(value);
-		if (Array.isArray(value) && (value.length > sourceDocumentSchemaLimits.maxNodes || Object.keys(properties).filter((key) => key !== "length").some((key, index) => key !== String(index)) || Object.keys(properties).length !== value.length + 1)) fail$2("SCHEMA_INVALID", "Schema arrays must not contain holes or custom properties.");
-		for (const [key, property] of Object.entries(properties)) {
-			if (Array.isArray(value) && key === "length") continue;
-			if (!Object.hasOwn(property, "value") || !property.enumerable) fail$2("SCHEMA_INVALID", "Schema payloads cannot contain accessors or hidden properties.");
-			characters += key.length;
-			if (characters > sourceDocumentSchemaLimits.maxBytes) fail$2("SCHEMA_LIMIT", "The inline schema exceeds its size limit.");
-			Object.defineProperty(result, key, {
-				value: clone(property.value, depth + 1),
-				enumerable: true,
-				writable: false,
-				configurable: false
-			});
-		}
-		path.delete(value);
-		return Object.freeze(result);
-	};
-	const schema = clone(root, 0);
-	const result = Object.freeze({
-		id,
-		schema
-	});
-	if (new globalThis.TextEncoder().encode(JSON.stringify(result)).byteLength > sourceDocumentSchemaLimits.maxBytes) fail$2("SCHEMA_LIMIT", "The inline schema exceeds its UTF-8 size limit.");
-	return result;
-}
-//#endregion
-//#region ../document-source-readme/dist/preview.js
-function fail$1(message) {
-	throw new SourceDocumentError("DOCUMENT_PREVIEW_INVALID", message);
-}
-var plain = (value) => value && typeof value === "object" && !Array.isArray(value) && [Object.prototype, null].includes(Object.getPrototypeOf(value));
-/** Copy finite declarative JSON only; no project archives, owner payloads or executable callbacks. */
-function normalizeSourceDocumentPreview(model, requestedKind) {
-	identifier(requestedKind, "preview representation kind");
-	if (!plain(model)) fail$1("A declarative document preview is required.");
-	const allowed = /* @__PURE__ */ new Set([
-		"kind",
-		"source",
-		"blocks",
-		"rootIds",
-		"blockDefinitions",
-		"menus"
-	]);
-	if (Object.keys(model).some((key) => !allowed.has(key))) fail$1("A preview cannot contain project, archive or asset payloads.");
-	const ancestors = /* @__PURE__ */ new Set();
-	let nodes = 0, bytes = 0;
-	const copy = (value, depth = 0) => {
-		if (++nodes > 5e5 || depth > 80) fail$1("The document preview exceeds its structural limit.");
-		if (value === null || typeof value === "boolean") return value;
-		if (typeof value === "number") {
-			if (!Number.isFinite(value)) fail$1("Preview numbers must be finite.");
-			return value;
-		}
-		if (typeof value === "string") {
-			bytes += new TextEncoder().encode(value).byteLength;
-			if (bytes > 8388608) fail$1("The document preview exceeds its byte limit.");
-			return value;
-		}
-		if (!value || typeof value !== "object" || ancestors.has(value) || !Array.isArray(value) && !plain(value)) fail$1("Preview data must be finite plain JSON without callbacks.");
-		if (Object.getOwnPropertySymbols(value).length) fail$1("Preview JSON cannot contain symbols.");
-		const properties = Object.getOwnPropertyDescriptors(value), array = Array.isArray(value), result = array ? [] : {};
-		if (array && (!Number.isSafeInteger(value.length) || Object.keys(properties).length !== value.length + 1)) fail$1("Preview arrays cannot contain holes or custom fields.");
-		ancestors.add(value);
-		for (const [key, descriptor] of Object.entries(properties)) {
-			if (array && key === "length") continue;
-			if (!Object.hasOwn(descriptor, "value") || !descriptor.enumerable) fail$1("Preview JSON cannot contain accessors or hidden fields.");
-			bytes += new TextEncoder().encode(key).byteLength;
-			if (bytes > 8388608) fail$1("The document preview exceeds its byte limit.");
-			Object.defineProperty(result, key, {
-				value: copy(descriptor.value, depth + 1),
-				enumerable: true
-			});
-		}
-		ancestors.delete(value);
-		return Object.freeze(result);
-	};
-	const result = copy(model);
-	if (result.kind !== requestedKind || typeof result.source !== "string") fail$1("A preview must identify the requested kind and its source.");
-	if (result.blocks !== void 0 && (!plain(result.blocks) || Object.keys(result.blocks).length > 1e5 || Object.values(result.blocks).some((block) => !plain(block) || typeof block.opcode !== "string"))) fail$1("Preview blocks must be a bounded serialized block dictionary.");
-	if (result.rootIds !== void 0 && (!Array.isArray(result.rootIds) || result.rootIds.length > 256 || new Set(result.rootIds).size !== result.rootIds.length || result.rootIds.some((id) => typeof id !== "string" || !Object.hasOwn(result.blocks || {}, id)))) fail$1("Preview roots must identify distinct included blocks.");
-	if (result.blockDefinitions !== void 0) {
-		if (!Array.isArray(result.blockDefinitions) || result.blockDefinitions.length > 4096) fail$1("Preview block definitions must be a bounded array.");
-		const seen = /* @__PURE__ */ new Set();
-		for (const definition of result.blockDefinitions) {
-			if (!plain(definition) || typeof definition.opcode !== "string" || !definition.opcode || definition.opcode.length > 1024 || seen.has(definition.opcode) || typeof definition.blockType !== "string" || !(typeof definition.text === "string" || Array.isArray(definition.text) && definition.text.every((text) => typeof text === "string"))) fail$1("Preview definitions require distinct full opcodes and declarative labels.");
-			if (definition.blockIconURI !== void 0) {
-				if (typeof definition.blockIconURI !== "string") fail$1("A preview block icon must be an image URI.");
-				let uri;
-				try {
-					uri = new URL(definition.blockIconURI, "https://preview.invalid/");
-				} catch {
-					fail$1("A preview block icon URI is invalid.");
-				}
-				if (![
-					"http:",
-					"https:",
-					"data:"
-				].includes(uri.protocol) || uri.protocol === "data:" && !/^data:image\//iu.test(definition.blockIconURI)) fail$1("A preview cannot include executable icon URIs.");
-			}
-			seen.add(definition.opcode);
-		}
-	}
-	if (result.menus !== void 0 && (!plain(result.menus) || Object.values(result.menus).some((menu) => !plain(menu) || !Array.isArray(menu.items)))) fail$1("Preview menus must contain static item arrays.");
-	if (new TextEncoder().encode(JSON.stringify(result)).byteLength > 8388608) fail$1("The serialized preview exceeds its byte limit.");
-	return result;
-}
-//#endregion
-//#region ../document-source-readme/dist/index.js
-var sourceDocumentRegistrySymbol = Symbol.for("@kubohiroya/turbowarp-embedded-yaml/provider-registry/v1");
-//#endregion
-//#region src/source-document/docs-url.js
-function normalizeDocsURL$1(value) {
-	if (typeof value !== "string" || value.length > 8192) fail$2("DOCUMENT_METADATA_INVALID", "Document documentation must use an HTTPS URL.");
-	let url;
-	try {
-		url = new globalThis.URL(value);
-	} catch {
-		return fail$2("DOCUMENT_METADATA_INVALID", "Document documentation URL is invalid.");
-	}
-	if (url.protocol !== "https:" || url.username || url.password || hasControlCharacters(value) || value.includes(" ")) fail$2("DOCUMENT_METADATA_INVALID", "Document documentation must use a fixed HTTPS URL without credentials.");
-	return value;
-}
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/codegen/code.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/codegen/code.js
 var require_code$1 = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.regexpCode = exports.getEsmExportName = exports.getProperty = exports.safeStringify = exports.stringify = exports.strConcat = exports.addCodeArg = exports.str = exports._ = exports.nil = exports._Code = exports.Name = exports.IDENTIFIER = exports._CodeOrName = void 0;
@@ -876,7 +202,7 @@ var require_code$1 = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.regexpCode = regexpCode;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/codegen/scope.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/codegen/scope.js
 var require_scope = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.ValueScope = exports.ValueScopeName = exports.Scope = exports.varKinds = exports.UsedValueState = void 0;
@@ -1013,7 +339,7 @@ var require_scope = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.ValueScope = ValueScope;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/codegen/index.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/codegen/index.js
 var require_codegen = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.or = exports.and = exports.not = exports.CodeGen = exports.operators = exports.varKinds = exports.ValueScopeName = exports.ValueScope = exports.Scope = exports.Name = exports.regexpCode = exports.stringify = exports.getProperty = exports.nil = exports.strConcat = exports.str = exports._ = void 0;
@@ -1682,7 +1008,7 @@ var require_codegen = /* @__PURE__ */ __commonJSMin(((exports) => {
 	}
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/util.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/util.js
 var require_util = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.checkStrictMode = exports.getErrorPath = exports.Type = exports.useFunc = exports.setEvaluated = exports.evaluatedPropsToName = exports.mergeEvaluated = exports.eachItem = exports.unescapeJsonPointer = exports.escapeJsonPointer = exports.escapeFragment = exports.unescapeFragment = exports.schemaRefOrVal = exports.schemaHasRulesButRef = exports.schemaHasRules = exports.checkUnknownRules = exports.alwaysValidSchema = exports.toHash = void 0;
@@ -1823,7 +1149,7 @@ var require_util = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.checkStrictMode = checkStrictMode;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/names.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/names.js
 var require_names = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var codegen_1 = require_codegen();
@@ -1847,7 +1173,7 @@ var require_names = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/errors.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/errors.js
 var require_errors = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.extendErrors = exports.resetErrorsCount = exports.reportExtraError = exports.reportError = exports.keyword$DataError = exports.keywordError = void 0;
@@ -1943,7 +1269,7 @@ var require_errors = /* @__PURE__ */ __commonJSMin(((exports) => {
 	}
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/validate/boolSchema.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/validate/boolSchema.js
 var require_boolSchema = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.boolOrEmptySchema = exports.topBoolOrEmptySchema = void 0;
@@ -1985,7 +1311,7 @@ var require_boolSchema = /* @__PURE__ */ __commonJSMin(((exports) => {
 	}
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/rules.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/rules.js
 var require_rules = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.getRules = exports.isJSONType = void 0;
@@ -2043,7 +1369,7 @@ var require_rules = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.getRules = getRules;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/validate/applicability.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/validate/applicability.js
 var require_applicability = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.shouldUseRule = exports.shouldUseGroup = exports.schemaHasRulesForType = void 0;
@@ -2063,7 +1389,7 @@ var require_applicability = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.shouldUseRule = shouldUseRule;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/validate/dataType.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/validate/dataType.js
 var require_dataType = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.reportTypeError = exports.checkDataTypes = exports.checkDataType = exports.coerceAndCheckDataType = exports.getJSONTypes = exports.getSchemaTypes = exports.DataType = void 0;
@@ -2227,7 +1553,7 @@ var require_dataType = /* @__PURE__ */ __commonJSMin(((exports) => {
 	}
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/validate/defaults.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/validate/defaults.js
 var require_defaults = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.assignDefaults = void 0;
@@ -2253,7 +1579,7 @@ var require_defaults = /* @__PURE__ */ __commonJSMin(((exports) => {
 	}
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/code.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/code.js
 var require_code = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.validateUnion = exports.validateArray = exports.usePattern = exports.callValidateCode = exports.schemaProperties = exports.allSchemaProperties = exports.noPropertyInData = exports.propertyInData = exports.isOwnProperty = exports.hasPropFunc = exports.reportMissingProp = exports.checkMissingProp = exports.checkReportMissingProp = void 0;
@@ -2377,7 +1703,7 @@ var require_code = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.validateUnion = validateUnion;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/validate/keyword.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/validate/keyword.js
 var require_keyword = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.validateKeywordUsage = exports.validSchemaType = exports.funcKeywordCode = exports.macroKeywordCode = void 0;
@@ -2483,7 +1809,7 @@ var require_keyword = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.validateKeywordUsage = validateKeywordUsage;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/validate/subschema.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/validate/subschema.js
 var require_subschema = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.extendSubschemaMode = exports.extendSubschemaData = exports.getSubschema = void 0;
@@ -2550,7 +1876,7 @@ var require_subschema = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.extendSubschemaMode = extendSubschemaMode;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/fast-deep-equal@3.1.3/node_modules/fast-deep-equal/index.js
+//#region node_modules/.pnpm/fast-deep-equal@3.1.3/node_modules/fast-deep-equal/index.js
 var require_fast_deep_equal = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	module.exports = function equal(a, b) {
 		if (a === b) return true;
@@ -2580,7 +1906,7 @@ var require_fast_deep_equal = /* @__PURE__ */ __commonJSMin(((exports, module) =
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/json-schema-traverse@1.0.0/node_modules/json-schema-traverse/index.js
+//#region node_modules/.pnpm/json-schema-traverse@1.0.0/node_modules/json-schema-traverse/index.js
 var require_json_schema_traverse = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	var traverse = module.exports = function(schema, opts, cb) {
 		if (typeof opts == "function") {
@@ -2655,7 +1981,7 @@ var require_json_schema_traverse = /* @__PURE__ */ __commonJSMin(((exports, modu
 	}
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/resolve.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/resolve.js
 var require_resolve = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.getSchemaRefs = exports.resolveUrl = exports.normalizeId = exports._getFullPath = exports.getFullPath = exports.inlineRef = void 0;
@@ -2784,7 +2110,7 @@ var require_resolve = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.getSchemaRefs = getSchemaRefs;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/validate/index.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/validate/index.js
 var require_validate = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.getData = exports.KeywordCxt = exports.validateFunctionCode = void 0;
@@ -3203,7 +2529,7 @@ var require_validate = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.getData = getData;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/runtime/validation_error.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/runtime/validation_error.js
 var require_validation_error = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var ValidationError = class extends Error {
@@ -3216,7 +2542,7 @@ var require_validation_error = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.default = ValidationError;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/ref_error.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/ref_error.js
 var require_ref_error = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var resolve_1 = require_resolve();
@@ -3230,7 +2556,7 @@ var require_ref_error = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.default = MissingRefError;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/index.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/compile/index.js
 var require_compile = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.resolveSchema = exports.getCompilingSchema = exports.resolveRef = exports.compileSchema = exports.SchemaEnv = void 0;
@@ -3444,18 +2770,18 @@ var require_compile = /* @__PURE__ */ __commonJSMin(((exports) => {
 	}
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/data.json
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/data.json
 var data_exports = /* @__PURE__ */ __exportAll({
-	$id: () => $id$9,
+	$id: () => $id$10,
 	additionalProperties: () => false,
 	default: () => data_default,
 	description: () => description,
 	properties: () => properties$9,
 	required: () => required,
 	type: () => type$9
-}), $id$9, description, type$9, required, properties$9, data_default;
+}), $id$10, description, type$9, required, properties$9, data_default;
 var init_data = __esmMin((() => {
-	$id$9 = "https://raw.githubusercontent.com/ajv-validator/ajv/master/lib/refs/data.json#";
+	$id$10 = "https://raw.githubusercontent.com/ajv-validator/ajv/master/lib/refs/data.json#";
 	description = "Meta-schema for $data reference (JSON AnySchema extension proposal)";
 	type$9 = "object";
 	required = ["$data"];
@@ -3464,7 +2790,7 @@ var init_data = __esmMin((() => {
 		"anyOf": [{ "format": "relative-json-pointer" }, { "format": "json-pointer" }]
 	} };
 	data_default = {
-		$id: $id$9,
+		$id: $id$10,
 		description,
 		type: type$9,
 		required,
@@ -3473,12 +2799,14 @@ var init_data = __esmMin((() => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/fast-uri@3.1.6/node_modules/fast-uri/lib/utils.js
+//#region node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/lib/utils.js
 var require_utils = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	/** @type {(value: string) => boolean} */
 	var isUUID = RegExp.prototype.test.bind(/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu);
 	/** @type {(value: string) => boolean} */
 	var isIPv4 = RegExp.prototype.test.bind(/^(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)$/u);
+	/** @type {(value: string) => boolean} */
+	var isPort = RegExp.prototype.test.bind(/^\d*$/u);
 	/** @type {(value: string) => boolean} */
 	var isHexPair = RegExp.prototype.test.bind(/^[\da-f]{2}$/iu);
 	/** @type {(value: string) => boolean} */
@@ -4048,8 +3376,10 @@ var require_utils = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			uriTokens.push(host);
 		}
 		if (typeof component.port === "number" || typeof component.port === "string") {
+			const port = String(component.port);
+			if (!isPort(port)) throw new TypeError("URI port is malformed.");
 			uriTokens.push(":");
-			uriTokens.push(String(component.port));
+			uriTokens.push(port);
 		}
 		return uriTokens.length ? uriTokens.join("") : void 0;
 	}
@@ -4073,7 +3403,7 @@ var require_utils = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/fast-uri@3.1.6/node_modules/fast-uri/lib/schemes.js
+//#region node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/lib/schemes.js
 var require_schemes = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	var { isUUID } = require_utils();
 	var URN_REG = /^([\da-z][\d\-a-z]{0,31}):((?:[\w!$'()*+,\-./:;=@]|%[\da-f]{2})+)$/iu;
@@ -4257,7 +3587,7 @@ var require_schemes = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/fast-uri@3.1.6/node_modules/fast-uri/index.js
+//#region node_modules/.pnpm/fast-uri@3.1.8/node_modules/fast-uri/index.js
 var require_fast_uri = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	var { normalizeIPv6, removeDotSegments, recomposeAuthority, normalizePercentEncoding, normalizePathEncoding, serializePathEncoding, normalizeQueryFragmentEncoding, encodeQuery, encodeFragment, reescapeHostDelimiters, isIPv4, nonSimpleDomain } = require_utils();
 	var { SCHEMES, getSchemeHandler } = require_schemes();
@@ -4452,12 +3782,23 @@ var require_fast_uri = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 		return false;
 	}
 	/**
+	* Whether the host is a bracketed IP literal (RFC 3986 `IP-literal`).
+	* An unterminated `[` is not a literal, so it must still be validated as a
+	* reg-name instead of being waved through as an IP.
+	*
+	* @param {string} host
+	* @returns {boolean}
+	*/
+	function isIPLiteral(host) {
+		return host[0] === "[" && host[host.length - 1] === "]";
+	}
+	/**
 	* @param {RegExpMatchArray} matches
 	* @returns {boolean}
 	*/
 	function hasMalformedComponentPercentEncoding(matches) {
 		const host = matches[4];
-		return hasMalformedPercentEncoding(matches[3]) || host !== void 0 && !(host[0] === "[" && host[host.length - 1] === "]") && hasMalformedPercentEncoding(host) || hasMalformedPercentEncoding(matches[6]) || hasMalformedPercentEncoding(matches[7]) || hasMalformedPercentEncoding(matches[8]);
+		return hasMalformedPercentEncoding(matches[3]) || host !== void 0 && !isIPLiteral(host) && hasMalformedPercentEncoding(host) || hasMalformedPercentEncoding(matches[6]) || hasMalformedPercentEncoding(matches[7]) || hasMalformedPercentEncoding(matches[8]);
 	}
 	/**
 	* @param {import('./types/index').URIComponent} parsed
@@ -4467,7 +3808,7 @@ var require_fast_uri = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	* @returns {boolean} whether host conversion failed
 	*/
 	function canonicalizeHost(parsed, options, schemeHandler, isIP) {
-		if (!options.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport) && parsed.host && parsed.host[0] !== "[" && (options.domainHost || schemeHandler && schemeHandler.domainHost) && isIP === false && nonSimpleDomain(parsed.host)) try {
+		if (!options.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport) && parsed.host && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && isIP === false && nonSimpleDomain(parsed.host)) try {
 			parsed.host = new URL("http://" + parsed.host).hostname;
 		} catch (e) {
 			parsed.error = parsed.error || "Host's domain name can not be converted to ASCII: " + e;
@@ -4549,10 +3890,11 @@ var require_fast_uri = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			}
 			if (parsed.host) {
 				if (isIPv4(parsed.host) === false) {
-					const bracketedIPLiteral = parsed.host[0] === "[" && parsed.host[parsed.host.length - 1] === "]";
+					const bracketedIPLiteral = isIPLiteral(parsed.host);
+					const hasIPLiteralBracket = parsed.host.indexOf("[") !== -1 || parsed.host.indexOf("]") !== -1;
 					const ipv6result = normalizeIPv6(parsed.host);
 					isIP = ipv6result.isIPV6 || ipv6result.isIPVFuture === true;
-					malformedIPLiteral = bracketedIPLiteral && ipv6result.error === true;
+					malformedIPLiteral = hasIPLiteralBracket && (!bracketedIPLiteral || ipv6result.error === true);
 					parsed.host = isIP ? ipv6result.host : ipv6result.host.toLowerCase();
 					if (malformedIPLiteral) {
 						parsed.error = parsed.error || "URI host is malformed.";
@@ -4566,11 +3908,13 @@ var require_fast_uri = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			else parsed.reference = "uri";
 			if (options.reference && options.reference !== "suffix" && options.reference !== parsed.reference) parsed.error = parsed.error || "URI is not a " + options.reference + " reference.";
 			const schemeHandler = getSchemeHandler(options.scheme || parsed.scheme);
-			malformedHost = canonicalizeHost(parsed, options, schemeHandler, isIP);
+			if (!malformedIPLiteral) malformedHost = canonicalizeHost(parsed, options, schemeHandler, isIP);
+			if (uri.indexOf("%") !== -1 && parsed.host !== void 0 && !malformedIPLiteral) {
+				let host = isIP ? parsed.host : normalizePercentEncoding(parsed.host, true);
+				if (!isIP) host = normalizePercentEncoding(host.toLowerCase());
+				parsed.host = reescapeHostDelimiters(host, isIP);
+			}
 			if (!schemeHandler || schemeHandler && !schemeHandler.skipNormalize) {
-				if (uri.indexOf("%") !== -1) {
-					if (parsed.host !== void 0 && !malformedIPLiteral) parsed.host = reescapeHostDelimiters(isIP ? parsed.host : normalizePercentEncoding(parsed.host, true), isIP);
-				}
 				if (parsed.path) parsed.path = normalizePathEncoding(parsed.path);
 				if (parsed.query) parsed.query = normalizeQueryFragmentEncoding(parsed.query);
 				if (parsed.fragment) parsed.fragment = normalizeQueryFragmentEncoding(parsed.fragment);
@@ -4651,7 +3995,7 @@ var require_fast_uri = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	module.exports.fastUri = fastUri;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/runtime/uri.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/runtime/uri.js
 var require_uri = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var uri = require_fast_uri();
@@ -4659,7 +4003,7 @@ var require_uri = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.default = uri;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/core.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/core.js
 var require_core$1 = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = void 0;
@@ -5228,7 +4572,7 @@ var require_core$1 = /* @__PURE__ */ __commonJSMin(((exports) => {
 	}
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/core/id.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/core/id.js
 var require_id = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.default = {
@@ -5239,7 +4583,7 @@ var require_id = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/core/ref.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/core/ref.js
 var require_ref = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.callRef = exports.getValidate = void 0;
@@ -5346,7 +4690,7 @@ var require_ref = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.default = def;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/core/index.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/core/index.js
 var require_core = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var id_1 = require_id();
@@ -5363,7 +4707,7 @@ var require_core = /* @__PURE__ */ __commonJSMin(((exports) => {
 	];
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/limitNumber.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/limitNumber.js
 var require_limitNumber = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var codegen_1 = require_codegen();
@@ -5406,7 +4750,7 @@ var require_limitNumber = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/multipleOf.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/multipleOf.js
 var require_multipleOf = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var codegen_1 = require_codegen();
@@ -5429,7 +4773,7 @@ var require_multipleOf = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/runtime/ucs2length.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/runtime/ucs2length.js
 var require_ucs2length = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	function ucs2length(str) {
@@ -5451,7 +4795,7 @@ var require_ucs2length = /* @__PURE__ */ __commonJSMin(((exports) => {
 	ucs2length.code = "require(\"ajv/dist/runtime/ucs2length\").default";
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/limitLength.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/limitLength.js
 var require_limitLength = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var codegen_1 = require_codegen();
@@ -5478,7 +4822,7 @@ var require_limitLength = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/pattern.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/pattern.js
 var require_pattern = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var code_1 = require_code();
@@ -5510,7 +4854,7 @@ var require_pattern = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/limitProperties.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/limitProperties.js
 var require_limitProperties = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var codegen_1 = require_codegen();
@@ -5534,7 +4878,7 @@ var require_limitProperties = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/required.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/required.js
 var require_required = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var code_1 = require_code();
@@ -5600,7 +4944,7 @@ var require_required = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/limitItems.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/limitItems.js
 var require_limitItems = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var codegen_1 = require_codegen();
@@ -5624,7 +4968,7 @@ var require_limitItems = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/runtime/equal.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/runtime/equal.js
 var require_equal = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var equal = require_fast_deep_equal();
@@ -5632,7 +4976,7 @@ var require_equal = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.default = equal;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/uniqueItems.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/uniqueItems.js
 var require_uniqueItems = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var dataType_1 = require_dataType();
@@ -5695,7 +5039,7 @@ var require_uniqueItems = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/const.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/const.js
 var require_const = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var codegen_1 = require_codegen();
@@ -5716,7 +5060,7 @@ var require_const = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/enum.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/enum.js
 var require_enum = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var codegen_1 = require_codegen();
@@ -5759,7 +5103,7 @@ var require_enum = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/index.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/index.js
 var require_validation = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var limitNumber_1 = require_limitNumber();
@@ -5794,7 +5138,7 @@ var require_validation = /* @__PURE__ */ __commonJSMin(((exports) => {
 	];
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/additionalItems.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/additionalItems.js
 var require_additionalItems = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.validateAdditionalItems = void 0;
@@ -5846,7 +5190,7 @@ var require_additionalItems = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.default = def;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/items.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/items.js
 var require_items = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.validateTuple = void 0;
@@ -5899,7 +5243,7 @@ var require_items = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.default = def;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/prefixItems.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/prefixItems.js
 var require_prefixItems = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var items_1 = require_items();
@@ -5912,7 +5256,7 @@ var require_prefixItems = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/items2020.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/items2020.js
 var require_items2020 = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var codegen_1 = require_codegen();
@@ -5939,7 +5283,7 @@ var require_items2020 = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/contains.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/contains.js
 var require_contains = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var codegen_1 = require_codegen();
@@ -6023,7 +5367,7 @@ var require_contains = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/dependencies.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/dependencies.js
 var require_dependencies = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.validateSchemaDeps = exports.validatePropertyDeps = exports.error = void 0;
@@ -6104,7 +5448,7 @@ var require_dependencies = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.default = def;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/propertyNames.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/propertyNames.js
 var require_propertyNames = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var codegen_1 = require_codegen();
@@ -6140,7 +5484,7 @@ var require_propertyNames = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/additionalProperties.js
 var require_additionalProperties = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var code_1 = require_code();
@@ -6229,7 +5573,7 @@ var require_additionalProperties = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/properties.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/properties.js
 var require_properties = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var validate_1 = require_validate();
@@ -6274,7 +5618,7 @@ var require_properties = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/patternProperties.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/patternProperties.js
 var require_patternProperties = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var code_1 = require_code();
@@ -6329,7 +5673,7 @@ var require_patternProperties = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/not.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/not.js
 var require_not = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var util_1 = require_util();
@@ -6356,7 +5700,7 @@ var require_not = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/anyOf.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/anyOf.js
 var require_anyOf = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.default = {
@@ -6368,7 +5712,7 @@ var require_anyOf = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/oneOf.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/oneOf.js
 var require_oneOf = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var codegen_1 = require_codegen();
@@ -6414,7 +5758,7 @@ var require_oneOf = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/allOf.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/allOf.js
 var require_allOf = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var util_1 = require_util();
@@ -6439,7 +5783,7 @@ var require_allOf = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/if.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/if.js
 var require_if = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var codegen_1 = require_codegen();
@@ -6496,7 +5840,7 @@ var require_if = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.default = def;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/thenElse.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/thenElse.js
 var require_thenElse = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var util_1 = require_util();
@@ -6509,7 +5853,7 @@ var require_thenElse = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/index.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/index.js
 var require_applicator = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var additionalItems_1 = require_additionalItems();
@@ -6550,7 +5894,7 @@ var require_applicator = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.default = getApplicator;
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/format/format.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/format/format.js
 var require_format$1 = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var codegen_1 = require_codegen();
@@ -6638,13 +5982,13 @@ var require_format$1 = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/format/index.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/format/index.js
 var require_format = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.default = [require_format$1().default];
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/metadata.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/metadata.js
 var require_metadata = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.contentVocabulary = exports.metadataVocabulary = void 0;
@@ -6664,7 +6008,7 @@ var require_metadata = /* @__PURE__ */ __commonJSMin(((exports) => {
 	];
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/draft7.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/draft7.js
 var require_draft7 = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var core_1 = require_core();
@@ -6682,7 +6026,7 @@ var require_draft7 = /* @__PURE__ */ __commonJSMin(((exports) => {
 	];
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/discriminator/types.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/discriminator/types.js
 var require_types = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.DiscrError = void 0;
@@ -6693,7 +6037,7 @@ var require_types = /* @__PURE__ */ __commonJSMin(((exports) => {
 	})(DiscrError || (exports.DiscrError = DiscrError = {}));
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/discriminator/index.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/discriminator/index.js
 var require_discriminator = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var codegen_1 = require_codegen();
@@ -6786,20 +6130,20 @@ var require_discriminator = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-draft-07.json
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-draft-07.json
 var json_schema_draft_07_exports = /* @__PURE__ */ __exportAll({
-	$id: () => $id$8,
-	$schema: () => $schema$8,
+	$id: () => $id$9,
+	$schema: () => $schema$9,
 	default: () => json_schema_draft_07_default,
 	definitions: () => definitions,
 	properties: () => properties$8,
 	title: () => title$8,
 	type: () => type$8
 });
-var $schema$8, $id$8, title$8, definitions, type$8, properties$8, json_schema_draft_07_default;
+var $schema$9, $id$9, title$8, definitions, type$8, properties$8, json_schema_draft_07_default;
 var init_json_schema_draft_07 = __esmMin((() => {
-	$schema$8 = "http://json-schema.org/draft-07/schema#";
-	$id$8 = "http://json-schema.org/draft-07/schema#";
+	$schema$9 = "http://json-schema.org/draft-07/schema#";
+	$id$9 = "http://json-schema.org/draft-07/schema#";
 	title$8 = "Core schema meta-schema";
 	definitions = {
 		"schemaArray": {
@@ -6930,8 +6274,8 @@ var init_json_schema_draft_07 = __esmMin((() => {
 		"not": { "$ref": "#" }
 	};
 	json_schema_draft_07_default = {
-		$schema: $schema$8,
-		$id: $id$8,
+		$schema: $schema$9,
+		$id: $id$9,
 		title: title$8,
 		definitions,
 		type: type$8,
@@ -6940,7 +6284,7 @@ var init_json_schema_draft_07 = __esmMin((() => {
 	};
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/ajv.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/ajv.js
 var require_ajv = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.MissingRefError = exports.ValidationError = exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = exports.Ajv = void 0;
@@ -7032,7 +6376,1575 @@ var require_ajv = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	});
 }));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/jsonc-parser@3.3.1/node_modules/jsonc-parser/lib/esm/impl/scanner.js
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/dynamic/dynamicAnchor.js
+var require_dynamicAnchor = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.dynamicAnchor = void 0;
+	var codegen_1 = require_codegen();
+	var names_1 = require_names();
+	var compile_1 = require_compile();
+	var ref_1 = require_ref();
+	var def = {
+		keyword: "$dynamicAnchor",
+		schemaType: "string",
+		code: (cxt) => dynamicAnchor(cxt, cxt.schema)
+	};
+	function dynamicAnchor(cxt, anchor) {
+		const { gen, it } = cxt;
+		it.schemaEnv.root.dynamicAnchors[anchor] = true;
+		const v = (0, codegen_1._)`${names_1.default.dynamicAnchors}${(0, codegen_1.getProperty)(anchor)}`;
+		const validate = it.errSchemaPath === "#" ? it.validateName : _getValidate(cxt);
+		gen.if((0, codegen_1._)`!${v}`, () => gen.assign(v, validate));
+	}
+	exports.dynamicAnchor = dynamicAnchor;
+	function _getValidate(cxt) {
+		const { schemaEnv, schema, self } = cxt.it;
+		const { root, baseId, localRefs, meta } = schemaEnv.root;
+		const { schemaId } = self.opts;
+		const sch = new compile_1.SchemaEnv({
+			schema,
+			schemaId,
+			root,
+			baseId,
+			localRefs,
+			meta
+		});
+		compile_1.compileSchema.call(self, sch);
+		return (0, ref_1.getValidate)(cxt, sch);
+	}
+	exports.default = def;
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/dynamic/dynamicRef.js
+var require_dynamicRef = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.dynamicRef = void 0;
+	var codegen_1 = require_codegen();
+	var names_1 = require_names();
+	var ref_1 = require_ref();
+	var def = {
+		keyword: "$dynamicRef",
+		schemaType: "string",
+		code: (cxt) => dynamicRef(cxt, cxt.schema)
+	};
+	function dynamicRef(cxt, ref) {
+		const { gen, keyword, it } = cxt;
+		if (ref[0] !== "#") throw new Error(`"${keyword}" only supports hash fragment reference`);
+		const anchor = ref.slice(1);
+		if (it.allErrors) _dynamicRef();
+		else {
+			const valid = gen.let("valid", false);
+			_dynamicRef(valid);
+			cxt.ok(valid);
+		}
+		function _dynamicRef(valid) {
+			if (it.schemaEnv.root.dynamicAnchors[anchor]) {
+				const v = gen.let("_v", (0, codegen_1._)`${names_1.default.dynamicAnchors}${(0, codegen_1.getProperty)(anchor)}`);
+				gen.if(v, _callRef(v, valid), _callRef(it.validateName, valid));
+			} else _callRef(it.validateName, valid)();
+		}
+		function _callRef(validate, valid) {
+			return valid ? () => gen.block(() => {
+				(0, ref_1.callRef)(cxt, validate);
+				gen.let(valid, true);
+			}) : () => (0, ref_1.callRef)(cxt, validate);
+		}
+	}
+	exports.dynamicRef = dynamicRef;
+	exports.default = def;
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/dynamic/recursiveAnchor.js
+var require_recursiveAnchor = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	var dynamicAnchor_1 = require_dynamicAnchor();
+	var util_1 = require_util();
+	exports.default = {
+		keyword: "$recursiveAnchor",
+		schemaType: "boolean",
+		code(cxt) {
+			if (cxt.schema) (0, dynamicAnchor_1.dynamicAnchor)(cxt, "");
+			else (0, util_1.checkStrictMode)(cxt.it, "$recursiveAnchor: false is ignored");
+		}
+	};
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/dynamic/recursiveRef.js
+var require_recursiveRef = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	var dynamicRef_1 = require_dynamicRef();
+	exports.default = {
+		keyword: "$recursiveRef",
+		schemaType: "string",
+		code: (cxt) => (0, dynamicRef_1.dynamicRef)(cxt, cxt.schema)
+	};
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/dynamic/index.js
+var require_dynamic = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	var dynamicAnchor_1 = require_dynamicAnchor();
+	var dynamicRef_1 = require_dynamicRef();
+	var recursiveAnchor_1 = require_recursiveAnchor();
+	var recursiveRef_1 = require_recursiveRef();
+	exports.default = [
+		dynamicAnchor_1.default,
+		dynamicRef_1.default,
+		recursiveAnchor_1.default,
+		recursiveRef_1.default
+	];
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/dependentRequired.js
+var require_dependentRequired = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	var dependencies_1 = require_dependencies();
+	exports.default = {
+		keyword: "dependentRequired",
+		type: "object",
+		schemaType: "object",
+		error: dependencies_1.error,
+		code: (cxt) => (0, dependencies_1.validatePropertyDeps)(cxt)
+	};
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/dependentSchemas.js
+var require_dependentSchemas = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	var dependencies_1 = require_dependencies();
+	exports.default = {
+		keyword: "dependentSchemas",
+		type: "object",
+		schemaType: "object",
+		code: (cxt) => (0, dependencies_1.validateSchemaDeps)(cxt)
+	};
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/limitContains.js
+var require_limitContains = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	var util_1 = require_util();
+	exports.default = {
+		keyword: ["maxContains", "minContains"],
+		type: "array",
+		schemaType: "number",
+		code({ keyword, parentSchema, it }) {
+			if (parentSchema.contains === void 0) (0, util_1.checkStrictMode)(it, `"${keyword}" without "contains" is ignored`);
+		}
+	};
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/next.js
+var require_next = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	var dependentRequired_1 = require_dependentRequired();
+	var dependentSchemas_1 = require_dependentSchemas();
+	var limitContains_1 = require_limitContains();
+	exports.default = [
+		dependentRequired_1.default,
+		dependentSchemas_1.default,
+		limitContains_1.default
+	];
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/unevaluated/unevaluatedProperties.js
+var require_unevaluatedProperties = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	var codegen_1 = require_codegen();
+	var util_1 = require_util();
+	var names_1 = require_names();
+	exports.default = {
+		keyword: "unevaluatedProperties",
+		type: "object",
+		schemaType: ["boolean", "object"],
+		trackErrors: true,
+		error: {
+			message: "must NOT have unevaluated properties",
+			params: ({ params }) => (0, codegen_1._)`{unevaluatedProperty: ${params.unevaluatedProperty}}`
+		},
+		code(cxt) {
+			const { gen, schema, data, errsCount, it } = cxt;
+			/* istanbul ignore if */
+			if (!errsCount) throw new Error("ajv implementation error");
+			const { allErrors, props } = it;
+			if (props instanceof codegen_1.Name) gen.if((0, codegen_1._)`${props} !== true`, () => gen.forIn("key", data, (key) => gen.if(unevaluatedDynamic(props, key), () => unevaluatedPropCode(key))));
+			else if (props !== true) gen.forIn("key", data, (key) => props === void 0 ? unevaluatedPropCode(key) : gen.if(unevaluatedStatic(props, key), () => unevaluatedPropCode(key)));
+			it.props = true;
+			cxt.ok((0, codegen_1._)`${errsCount} === ${names_1.default.errors}`);
+			function unevaluatedPropCode(key) {
+				if (schema === false) {
+					cxt.setParams({ unevaluatedProperty: key });
+					cxt.error();
+					if (!allErrors) gen.break();
+					return;
+				}
+				if (!(0, util_1.alwaysValidSchema)(it, schema)) {
+					const valid = gen.name("valid");
+					cxt.subschema({
+						keyword: "unevaluatedProperties",
+						dataProp: key,
+						dataPropType: util_1.Type.Str
+					}, valid);
+					if (!allErrors) gen.if((0, codegen_1.not)(valid), () => gen.break());
+				}
+			}
+			function unevaluatedDynamic(evaluatedProps, key) {
+				return (0, codegen_1._)`!${evaluatedProps} || !${evaluatedProps}[${key}]`;
+			}
+			function unevaluatedStatic(evaluatedProps, key) {
+				const ps = [];
+				for (const p in evaluatedProps) if (evaluatedProps[p] === true) ps.push((0, codegen_1._)`${key} !== ${p}`);
+				return (0, codegen_1.and)(...ps);
+			}
+		}
+	};
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/unevaluated/unevaluatedItems.js
+var require_unevaluatedItems = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	var codegen_1 = require_codegen();
+	var util_1 = require_util();
+	exports.default = {
+		keyword: "unevaluatedItems",
+		type: "array",
+		schemaType: ["boolean", "object"],
+		error: {
+			message: ({ params: { len } }) => (0, codegen_1.str)`must NOT have more than ${len} items`,
+			params: ({ params: { len } }) => (0, codegen_1._)`{limit: ${len}}`
+		},
+		code(cxt) {
+			const { gen, schema, data, it } = cxt;
+			const items = it.items || 0;
+			if (items === true) return;
+			const len = gen.const("len", (0, codegen_1._)`${data}.length`);
+			if (schema === false) {
+				cxt.setParams({ len: items });
+				cxt.fail((0, codegen_1._)`${len} > ${items}`);
+			} else if (typeof schema == "object" && !(0, util_1.alwaysValidSchema)(it, schema)) {
+				const valid = gen.var("valid", (0, codegen_1._)`${len} <= ${items}`);
+				gen.if((0, codegen_1.not)(valid), () => validateItems(valid, items));
+				cxt.ok(valid);
+			}
+			it.items = true;
+			function validateItems(valid, from) {
+				gen.forRange("i", from, len, (i) => {
+					cxt.subschema({
+						keyword: "unevaluatedItems",
+						dataProp: i,
+						dataPropType: util_1.Type.Num
+					}, valid);
+					if (!it.allErrors) gen.if((0, codegen_1.not)(valid), () => gen.break());
+				});
+			}
+		}
+	};
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/unevaluated/index.js
+var require_unevaluated = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	var unevaluatedProperties_1 = require_unevaluatedProperties();
+	var unevaluatedItems_1 = require_unevaluatedItems();
+	exports.default = [unevaluatedProperties_1.default, unevaluatedItems_1.default];
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/draft2020.js
+var require_draft2020 = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	var core_1 = require_core();
+	var validation_1 = require_validation();
+	var applicator_1 = require_applicator();
+	var dynamic_1 = require_dynamic();
+	var next_1 = require_next();
+	var unevaluated_1 = require_unevaluated();
+	var format_1 = require_format();
+	var metadata_1 = require_metadata();
+	exports.default = [
+		dynamic_1.default,
+		core_1.default,
+		validation_1.default,
+		(0, applicator_1.default)(true),
+		format_1.default,
+		metadata_1.metadataVocabulary,
+		metadata_1.contentVocabulary,
+		next_1.default,
+		unevaluated_1.default
+	];
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/schema.json
+var schema_exports = /* @__PURE__ */ __exportAll({
+	$comment: () => $comment,
+	$dynamicAnchor: () => $dynamicAnchor$7,
+	$id: () => $id$8,
+	$schema: () => $schema$8,
+	$vocabulary: () => $vocabulary$7,
+	allOf: () => allOf,
+	default: () => schema_default,
+	properties: () => properties$7,
+	title: () => title$7,
+	type: () => type$7
+});
+var $schema$8, $id$8, $vocabulary$7, $dynamicAnchor$7, title$7, allOf, type$7, $comment, properties$7, schema_default;
+var init_schema = __esmMin((() => {
+	$schema$8 = "https://json-schema.org/draft/2020-12/schema";
+	$id$8 = "https://json-schema.org/draft/2020-12/schema";
+	$vocabulary$7 = {
+		"https://json-schema.org/draft/2020-12/vocab/core": true,
+		"https://json-schema.org/draft/2020-12/vocab/applicator": true,
+		"https://json-schema.org/draft/2020-12/vocab/unevaluated": true,
+		"https://json-schema.org/draft/2020-12/vocab/validation": true,
+		"https://json-schema.org/draft/2020-12/vocab/meta-data": true,
+		"https://json-schema.org/draft/2020-12/vocab/format-annotation": true,
+		"https://json-schema.org/draft/2020-12/vocab/content": true
+	};
+	$dynamicAnchor$7 = "meta";
+	title$7 = "Core and Validation specifications meta-schema";
+	allOf = [
+		{ "$ref": "meta/core" },
+		{ "$ref": "meta/applicator" },
+		{ "$ref": "meta/unevaluated" },
+		{ "$ref": "meta/validation" },
+		{ "$ref": "meta/meta-data" },
+		{ "$ref": "meta/format-annotation" },
+		{ "$ref": "meta/content" }
+	];
+	type$7 = ["object", "boolean"];
+	$comment = "This meta-schema also defines keywords that have appeared in previous drafts in order to prevent incompatible extensions as they remain in common use.";
+	properties$7 = {
+		"definitions": {
+			"$comment": "\"definitions\" has been replaced by \"$defs\".",
+			"type": "object",
+			"additionalProperties": { "$dynamicRef": "#meta" },
+			"deprecated": true,
+			"default": {}
+		},
+		"dependencies": {
+			"$comment": "\"dependencies\" has been split and replaced by \"dependentSchemas\" and \"dependentRequired\" in order to serve their differing semantics.",
+			"type": "object",
+			"additionalProperties": { "anyOf": [{ "$dynamicRef": "#meta" }, { "$ref": "meta/validation#/$defs/stringArray" }] },
+			"deprecated": true,
+			"default": {}
+		},
+		"$recursiveAnchor": {
+			"$comment": "\"$recursiveAnchor\" has been replaced by \"$dynamicAnchor\".",
+			"$ref": "meta/core#/$defs/anchorString",
+			"deprecated": true
+		},
+		"$recursiveRef": {
+			"$comment": "\"$recursiveRef\" has been replaced by \"$dynamicRef\".",
+			"$ref": "meta/core#/$defs/uriReferenceString",
+			"deprecated": true
+		}
+	};
+	schema_default = {
+		$schema: $schema$8,
+		$id: $id$8,
+		$vocabulary: $vocabulary$7,
+		$dynamicAnchor: $dynamicAnchor$7,
+		title: title$7,
+		allOf,
+		type: type$7,
+		$comment,
+		properties: properties$7
+	};
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/meta/applicator.json
+var applicator_exports = /* @__PURE__ */ __exportAll({
+	$defs: () => $defs$3,
+	$dynamicAnchor: () => $dynamicAnchor$6,
+	$id: () => $id$7,
+	$schema: () => $schema$7,
+	$vocabulary: () => $vocabulary$6,
+	default: () => applicator_default,
+	properties: () => properties$6,
+	title: () => title$6,
+	type: () => type$6
+});
+var $schema$7, $id$7, $vocabulary$6, $dynamicAnchor$6, title$6, type$6, properties$6, $defs$3, applicator_default;
+var init_applicator = __esmMin((() => {
+	$schema$7 = "https://json-schema.org/draft/2020-12/schema";
+	$id$7 = "https://json-schema.org/draft/2020-12/meta/applicator";
+	$vocabulary$6 = { "https://json-schema.org/draft/2020-12/vocab/applicator": true };
+	$dynamicAnchor$6 = "meta";
+	title$6 = "Applicator vocabulary meta-schema";
+	type$6 = ["object", "boolean"];
+	properties$6 = {
+		"prefixItems": { "$ref": "#/$defs/schemaArray" },
+		"items": { "$dynamicRef": "#meta" },
+		"contains": { "$dynamicRef": "#meta" },
+		"additionalProperties": { "$dynamicRef": "#meta" },
+		"properties": {
+			"type": "object",
+			"additionalProperties": { "$dynamicRef": "#meta" },
+			"default": {}
+		},
+		"patternProperties": {
+			"type": "object",
+			"additionalProperties": { "$dynamicRef": "#meta" },
+			"propertyNames": { "format": "regex" },
+			"default": {}
+		},
+		"dependentSchemas": {
+			"type": "object",
+			"additionalProperties": { "$dynamicRef": "#meta" },
+			"default": {}
+		},
+		"propertyNames": { "$dynamicRef": "#meta" },
+		"if": { "$dynamicRef": "#meta" },
+		"then": { "$dynamicRef": "#meta" },
+		"else": { "$dynamicRef": "#meta" },
+		"allOf": { "$ref": "#/$defs/schemaArray" },
+		"anyOf": { "$ref": "#/$defs/schemaArray" },
+		"oneOf": { "$ref": "#/$defs/schemaArray" },
+		"not": { "$dynamicRef": "#meta" }
+	};
+	$defs$3 = { "schemaArray": {
+		"type": "array",
+		"minItems": 1,
+		"items": { "$dynamicRef": "#meta" }
+	} };
+	applicator_default = {
+		$schema: $schema$7,
+		$id: $id$7,
+		$vocabulary: $vocabulary$6,
+		$dynamicAnchor: $dynamicAnchor$6,
+		title: title$6,
+		type: type$6,
+		properties: properties$6,
+		$defs: $defs$3
+	};
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/meta/unevaluated.json
+var unevaluated_exports = /* @__PURE__ */ __exportAll({
+	$dynamicAnchor: () => $dynamicAnchor$5,
+	$id: () => $id$6,
+	$schema: () => $schema$6,
+	$vocabulary: () => $vocabulary$5,
+	default: () => unevaluated_default,
+	properties: () => properties$5,
+	title: () => title$5,
+	type: () => type$5
+});
+var $schema$6, $id$6, $vocabulary$5, $dynamicAnchor$5, title$5, type$5, properties$5, unevaluated_default;
+var init_unevaluated = __esmMin((() => {
+	$schema$6 = "https://json-schema.org/draft/2020-12/schema";
+	$id$6 = "https://json-schema.org/draft/2020-12/meta/unevaluated";
+	$vocabulary$5 = { "https://json-schema.org/draft/2020-12/vocab/unevaluated": true };
+	$dynamicAnchor$5 = "meta";
+	title$5 = "Unevaluated applicator vocabulary meta-schema";
+	type$5 = ["object", "boolean"];
+	properties$5 = {
+		"unevaluatedItems": { "$dynamicRef": "#meta" },
+		"unevaluatedProperties": { "$dynamicRef": "#meta" }
+	};
+	unevaluated_default = {
+		$schema: $schema$6,
+		$id: $id$6,
+		$vocabulary: $vocabulary$5,
+		$dynamicAnchor: $dynamicAnchor$5,
+		title: title$5,
+		type: type$5,
+		properties: properties$5
+	};
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/meta/content.json
+var content_exports = /* @__PURE__ */ __exportAll({
+	$dynamicAnchor: () => $dynamicAnchor$4,
+	$id: () => $id$5,
+	$schema: () => $schema$5,
+	$vocabulary: () => $vocabulary$4,
+	default: () => content_default,
+	properties: () => properties$4,
+	title: () => title$4,
+	type: () => type$4
+});
+var $schema$5, $id$5, $vocabulary$4, $dynamicAnchor$4, title$4, type$4, properties$4, content_default;
+var init_content = __esmMin((() => {
+	$schema$5 = "https://json-schema.org/draft/2020-12/schema";
+	$id$5 = "https://json-schema.org/draft/2020-12/meta/content";
+	$vocabulary$4 = { "https://json-schema.org/draft/2020-12/vocab/content": true };
+	$dynamicAnchor$4 = "meta";
+	title$4 = "Content vocabulary meta-schema";
+	type$4 = ["object", "boolean"];
+	properties$4 = {
+		"contentEncoding": { "type": "string" },
+		"contentMediaType": { "type": "string" },
+		"contentSchema": { "$dynamicRef": "#meta" }
+	};
+	content_default = {
+		$schema: $schema$5,
+		$id: $id$5,
+		$vocabulary: $vocabulary$4,
+		$dynamicAnchor: $dynamicAnchor$4,
+		title: title$4,
+		type: type$4,
+		properties: properties$4
+	};
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/meta/core.json
+var core_exports = /* @__PURE__ */ __exportAll({
+	$defs: () => $defs$2,
+	$dynamicAnchor: () => $dynamicAnchor$3,
+	$id: () => $id$4,
+	$schema: () => $schema$4,
+	$vocabulary: () => $vocabulary$3,
+	default: () => core_default,
+	properties: () => properties$3,
+	title: () => title$3,
+	type: () => type$3
+});
+var $schema$4, $id$4, $vocabulary$3, $dynamicAnchor$3, title$3, type$3, properties$3, $defs$2, core_default;
+var init_core = __esmMin((() => {
+	$schema$4 = "https://json-schema.org/draft/2020-12/schema";
+	$id$4 = "https://json-schema.org/draft/2020-12/meta/core";
+	$vocabulary$3 = { "https://json-schema.org/draft/2020-12/vocab/core": true };
+	$dynamicAnchor$3 = "meta";
+	title$3 = "Core vocabulary meta-schema";
+	type$3 = ["object", "boolean"];
+	properties$3 = {
+		"$id": {
+			"$ref": "#/$defs/uriReferenceString",
+			"$comment": "Non-empty fragments not allowed.",
+			"pattern": "^[^#]*#?$"
+		},
+		"$schema": { "$ref": "#/$defs/uriString" },
+		"$ref": { "$ref": "#/$defs/uriReferenceString" },
+		"$anchor": { "$ref": "#/$defs/anchorString" },
+		"$dynamicRef": { "$ref": "#/$defs/uriReferenceString" },
+		"$dynamicAnchor": { "$ref": "#/$defs/anchorString" },
+		"$vocabulary": {
+			"type": "object",
+			"propertyNames": { "$ref": "#/$defs/uriString" },
+			"additionalProperties": { "type": "boolean" }
+		},
+		"$comment": { "type": "string" },
+		"$defs": {
+			"type": "object",
+			"additionalProperties": { "$dynamicRef": "#meta" }
+		}
+	};
+	$defs$2 = {
+		"anchorString": {
+			"type": "string",
+			"pattern": "^[A-Za-z_][-A-Za-z0-9._]*$"
+		},
+		"uriString": {
+			"type": "string",
+			"format": "uri"
+		},
+		"uriReferenceString": {
+			"type": "string",
+			"format": "uri-reference"
+		}
+	};
+	core_default = {
+		$schema: $schema$4,
+		$id: $id$4,
+		$vocabulary: $vocabulary$3,
+		$dynamicAnchor: $dynamicAnchor$3,
+		title: title$3,
+		type: type$3,
+		properties: properties$3,
+		$defs: $defs$2
+	};
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/meta/format-annotation.json
+var format_annotation_exports = /* @__PURE__ */ __exportAll({
+	$dynamicAnchor: () => $dynamicAnchor$2,
+	$id: () => $id$3,
+	$schema: () => $schema$3,
+	$vocabulary: () => $vocabulary$2,
+	default: () => format_annotation_default,
+	properties: () => properties$2,
+	title: () => title$2,
+	type: () => type$2
+});
+var $schema$3, $id$3, $vocabulary$2, $dynamicAnchor$2, title$2, type$2, properties$2, format_annotation_default;
+var init_format_annotation = __esmMin((() => {
+	$schema$3 = "https://json-schema.org/draft/2020-12/schema";
+	$id$3 = "https://json-schema.org/draft/2020-12/meta/format-annotation";
+	$vocabulary$2 = { "https://json-schema.org/draft/2020-12/vocab/format-annotation": true };
+	$dynamicAnchor$2 = "meta";
+	title$2 = "Format vocabulary meta-schema for annotation results";
+	type$2 = ["object", "boolean"];
+	properties$2 = { "format": { "type": "string" } };
+	format_annotation_default = {
+		$schema: $schema$3,
+		$id: $id$3,
+		$vocabulary: $vocabulary$2,
+		$dynamicAnchor: $dynamicAnchor$2,
+		title: title$2,
+		type: type$2,
+		properties: properties$2
+	};
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/meta/meta-data.json
+var meta_data_exports = /* @__PURE__ */ __exportAll({
+	$dynamicAnchor: () => $dynamicAnchor$1,
+	$id: () => $id$2,
+	$schema: () => $schema$2,
+	$vocabulary: () => $vocabulary$1,
+	default: () => meta_data_default,
+	properties: () => properties$1,
+	title: () => title$1,
+	type: () => type$1
+});
+var $schema$2, $id$2, $vocabulary$1, $dynamicAnchor$1, title$1, type$1, properties$1, meta_data_default;
+var init_meta_data = __esmMin((() => {
+	$schema$2 = "https://json-schema.org/draft/2020-12/schema";
+	$id$2 = "https://json-schema.org/draft/2020-12/meta/meta-data";
+	$vocabulary$1 = { "https://json-schema.org/draft/2020-12/vocab/meta-data": true };
+	$dynamicAnchor$1 = "meta";
+	title$1 = "Meta-data vocabulary meta-schema";
+	type$1 = ["object", "boolean"];
+	properties$1 = {
+		"title": { "type": "string" },
+		"description": { "type": "string" },
+		"default": true,
+		"deprecated": {
+			"type": "boolean",
+			"default": false
+		},
+		"readOnly": {
+			"type": "boolean",
+			"default": false
+		},
+		"writeOnly": {
+			"type": "boolean",
+			"default": false
+		},
+		"examples": {
+			"type": "array",
+			"items": true
+		}
+	};
+	meta_data_default = {
+		$schema: $schema$2,
+		$id: $id$2,
+		$vocabulary: $vocabulary$1,
+		$dynamicAnchor: $dynamicAnchor$1,
+		title: title$1,
+		type: type$1,
+		properties: properties$1
+	};
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/meta/validation.json
+var validation_exports = /* @__PURE__ */ __exportAll({
+	$defs: () => $defs$1,
+	$dynamicAnchor: () => $dynamicAnchor,
+	$id: () => $id$1,
+	$schema: () => $schema$1,
+	$vocabulary: () => $vocabulary,
+	default: () => validation_default,
+	properties: () => properties,
+	title: () => title,
+	type: () => type
+});
+var $schema$1, $id$1, $vocabulary, $dynamicAnchor, title, type, properties, $defs$1, validation_default;
+var init_validation = __esmMin((() => {
+	$schema$1 = "https://json-schema.org/draft/2020-12/schema";
+	$id$1 = "https://json-schema.org/draft/2020-12/meta/validation";
+	$vocabulary = { "https://json-schema.org/draft/2020-12/vocab/validation": true };
+	$dynamicAnchor = "meta";
+	title = "Validation vocabulary meta-schema";
+	type = ["object", "boolean"];
+	properties = {
+		"type": { "anyOf": [{ "$ref": "#/$defs/simpleTypes" }, {
+			"type": "array",
+			"items": { "$ref": "#/$defs/simpleTypes" },
+			"minItems": 1,
+			"uniqueItems": true
+		}] },
+		"const": true,
+		"enum": {
+			"type": "array",
+			"items": true
+		},
+		"multipleOf": {
+			"type": "number",
+			"exclusiveMinimum": 0
+		},
+		"maximum": { "type": "number" },
+		"exclusiveMaximum": { "type": "number" },
+		"minimum": { "type": "number" },
+		"exclusiveMinimum": { "type": "number" },
+		"maxLength": { "$ref": "#/$defs/nonNegativeInteger" },
+		"minLength": { "$ref": "#/$defs/nonNegativeIntegerDefault0" },
+		"pattern": {
+			"type": "string",
+			"format": "regex"
+		},
+		"maxItems": { "$ref": "#/$defs/nonNegativeInteger" },
+		"minItems": { "$ref": "#/$defs/nonNegativeIntegerDefault0" },
+		"uniqueItems": {
+			"type": "boolean",
+			"default": false
+		},
+		"maxContains": { "$ref": "#/$defs/nonNegativeInteger" },
+		"minContains": {
+			"$ref": "#/$defs/nonNegativeInteger",
+			"default": 1
+		},
+		"maxProperties": { "$ref": "#/$defs/nonNegativeInteger" },
+		"minProperties": { "$ref": "#/$defs/nonNegativeIntegerDefault0" },
+		"required": { "$ref": "#/$defs/stringArray" },
+		"dependentRequired": {
+			"type": "object",
+			"additionalProperties": { "$ref": "#/$defs/stringArray" }
+		}
+	};
+	$defs$1 = {
+		"nonNegativeInteger": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"nonNegativeIntegerDefault0": {
+			"$ref": "#/$defs/nonNegativeInteger",
+			"default": 0
+		},
+		"simpleTypes": { "enum": [
+			"array",
+			"boolean",
+			"integer",
+			"null",
+			"number",
+			"object",
+			"string"
+		] },
+		"stringArray": {
+			"type": "array",
+			"items": { "type": "string" },
+			"uniqueItems": true,
+			"default": []
+		}
+	};
+	validation_default = {
+		$schema: $schema$1,
+		$id: $id$1,
+		$vocabulary,
+		$dynamicAnchor,
+		title,
+		type,
+		properties,
+		$defs: $defs$1
+	};
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/index.js
+var require_json_schema_2020_12 = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	var metaSchema = (init_schema(), __toCommonJS(schema_exports).default);
+	var applicator = (init_applicator(), __toCommonJS(applicator_exports).default);
+	var unevaluated = (init_unevaluated(), __toCommonJS(unevaluated_exports).default);
+	var content = (init_content(), __toCommonJS(content_exports).default);
+	var core = (init_core(), __toCommonJS(core_exports).default);
+	var format = (init_format_annotation(), __toCommonJS(format_annotation_exports).default);
+	var metadata = (init_meta_data(), __toCommonJS(meta_data_exports).default);
+	var validation = (init_validation(), __toCommonJS(validation_exports).default);
+	var META_SUPPORT_DATA = ["/properties"];
+	function addMetaSchema2020($data) {
+		[
+			metaSchema,
+			applicator,
+			unevaluated,
+			content,
+			core,
+			with$data(this, format),
+			metadata,
+			with$data(this, validation)
+		].forEach((sch) => this.addMetaSchema(sch, void 0, false));
+		return this;
+		function with$data(ajv, sch) {
+			return $data ? ajv.$dataMetaSchema(sch, META_SUPPORT_DATA) : sch;
+		}
+	}
+	exports.default = addMetaSchema2020;
+}));
+//#endregion
+//#region node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/2020.js
+var require__2020 = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.MissingRefError = exports.ValidationError = exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = exports.Ajv2020 = void 0;
+	var core_1 = require_core$1();
+	var draft2020_1 = require_draft2020();
+	var discriminator_1 = require_discriminator();
+	var json_schema_2020_12_1 = require_json_schema_2020_12();
+	var META_SCHEMA_ID = "https://json-schema.org/draft/2020-12/schema";
+	var Ajv2020 = class extends core_1.default {
+		constructor(opts = {}) {
+			super({
+				...opts,
+				dynamicRef: true,
+				next: true,
+				unevaluated: true
+			});
+		}
+		_addVocabularies() {
+			super._addVocabularies();
+			draft2020_1.default.forEach((v) => this.addVocabulary(v));
+			if (this.opts.discriminator) this.addKeyword(discriminator_1.default);
+		}
+		_addDefaultMetaSchema() {
+			super._addDefaultMetaSchema();
+			const { $data, meta } = this.opts;
+			if (!meta) return;
+			json_schema_2020_12_1.default.call(this, $data);
+			this.refs["http://json-schema.org/schema"] = META_SCHEMA_ID;
+		}
+		defaultMeta() {
+			return this.opts.defaultMeta = super.defaultMeta() || (this.getSchema(META_SCHEMA_ID) ? META_SCHEMA_ID : void 0);
+		}
+	};
+	exports.Ajv2020 = Ajv2020;
+	module.exports = exports = Ajv2020;
+	module.exports.Ajv2020 = Ajv2020;
+	Object.defineProperty(exports, "__esModule", { value: true });
+	exports.default = Ajv2020;
+	var validate_1 = require_validate();
+	Object.defineProperty(exports, "KeywordCxt", {
+		enumerable: true,
+		get: function() {
+			return validate_1.KeywordCxt;
+		}
+	});
+	var codegen_1 = require_codegen();
+	Object.defineProperty(exports, "_", {
+		enumerable: true,
+		get: function() {
+			return codegen_1._;
+		}
+	});
+	Object.defineProperty(exports, "str", {
+		enumerable: true,
+		get: function() {
+			return codegen_1.str;
+		}
+	});
+	Object.defineProperty(exports, "stringify", {
+		enumerable: true,
+		get: function() {
+			return codegen_1.stringify;
+		}
+	});
+	Object.defineProperty(exports, "nil", {
+		enumerable: true,
+		get: function() {
+			return codegen_1.nil;
+		}
+	});
+	Object.defineProperty(exports, "Name", {
+		enumerable: true,
+		get: function() {
+			return codegen_1.Name;
+		}
+	});
+	Object.defineProperty(exports, "CodeGen", {
+		enumerable: true,
+		get: function() {
+			return codegen_1.CodeGen;
+		}
+	});
+	var validation_error_1 = require_validation_error();
+	Object.defineProperty(exports, "ValidationError", {
+		enumerable: true,
+		get: function() {
+			return validation_error_1.default;
+		}
+	});
+	var ref_error_1 = require_ref_error();
+	Object.defineProperty(exports, "MissingRefError", {
+		enumerable: true,
+		get: function() {
+			return ref_error_1.default;
+		}
+	});
+}));
+//#endregion
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-extension-data-editor@0.5.0_react@18.3.1/node_modules/@kubohiroya/turbowarp-extension-data-editor/dist/fixed-input-schema.js
+var numberToken = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/u;
+var invalidNumber = Object.freeze({
+	kind: "invalid",
+	code: "fixed-number-input-invalid"
+});
+/**
+* Parse a NEW numeric draft according to NP-finite-new-input-v1.
+* Never apply this to opening/no-op raw values or use it as an owner validator.
+* Keep the validated token so negative zero, precision and exponent spelling survive.
+*/
+function parseFixedNumberInput(input) {
+	if (typeof input === "number") {
+		if (!Number.isFinite(input)) return invalidNumber;
+		return Object.freeze({
+			kind: "valid",
+			token: Object.is(input, -0) ? "-0" : String(input),
+			value: input
+		});
+	}
+	if (typeof input !== "string") return invalidNumber;
+	const token = input.trim();
+	if (!numberToken.test(token)) return invalidNumber;
+	const value = Number(token);
+	return Number.isFinite(value) ? Object.freeze({
+		kind: "valid",
+		token,
+		value
+	}) : invalidNumber;
+}
+var block_editor_fixed_inputs_schema_default = {
+	$schema: "https://json-schema.org/draft/2020-12/schema",
+	$id: "https://kubohiroya.github.io/turbowarp-document-data/schemas/block-editor-fixed-inputs.schema.json",
+	$defs: { "serializeDocument": {
+		"type": "object",
+		"properties": { "FORMAT": {
+			"type": "string",
+			"enum": ["html", "markdown"]
+		} },
+		"required": ["FORMAT"],
+		"additionalProperties": true
+	} }
+};
+//#endregion
+//#region src/fixed-input-schema.ts
+var repository$1 = "turbowarp-document-data";
+/** The owner JSON document is canonical; this selects a primitive field fragment. */
+function fixedInputBundle(opcode, argument) {
+	const source = {
+		repository: repository$1,
+		path: "schemas/block-editor-fixed-inputs.schema.json",
+		symbol: `#/$defs/${opcode}/properties/${argument}`
+	};
+	const blocks = block_editor_fixed_inputs_schema_default.$defs;
+	return {
+		identity: {
+			ownerId: repository$1,
+			contractId: opcode,
+			revision: "fixed-inputs-v1",
+			variantId: argument
+		},
+		dialect: "2020-12",
+		root: {
+			retrievalUri: block_editor_fixed_inputs_schema_default.$id,
+			document: blocks[opcode].properties[argument],
+			artifact: {
+				role: "canonical-schema",
+				source
+			}
+		},
+		resources: [],
+		provenance: {
+			canonicalSources: [source, {
+				repository: repository$1,
+				path: "src/extension.ts",
+				symbol: opcode
+			}],
+			generatedFiles: [],
+			referenceSchemas: [],
+			generationSources: []
+		}
+	};
+}
+//#endregion
+//#region src/fixed-input-editors.ts
+var extensionId = "kubohiroyadocumentdata";
+var repository = "turbowarp-document-data";
+var fields = [{
+	"opcode": "serializeDocument",
+	"argument": "FORMAT",
+	"control": "enum",
+	"choices": ["html", "markdown"],
+	"normalization": "identity",
+	"shape": "menu-shadow",
+	"maxBytes": false
+}];
+function literalString(value) {
+	if (typeof value !== "string") throw new TypeError("Expected a string literal.");
+	return value;
+}
+/** Legacy nonempty finite aliases are projections; opening never creates a write. */
+function existingFixedNumber(value) {
+	if (typeof value !== "string" && typeof value !== "number" || typeof value === "string" && value.trim() === "") throw new TypeError("Unavailable numeric projection.");
+	const number = Number(value);
+	if (!Number.isFinite(number)) throw new TypeError("Unavailable numeric projection.");
+	return number;
+}
+function normalizeChoice(field, raw) {
+	if (field.normalization === "lowercase") return raw.toLowerCase();
+	if (field.normalization === "method") return raw.trim().toUpperCase();
+	if (field.normalization === "trim") return raw.trim();
+	if (field.normalization === "parse-format") {
+		const lower = raw.trim().toLowerCase();
+		return lower === "json" ? "JSON" : lower === "yaml" ? "YAML" : lower === "auto" ? "auto" : raw;
+	}
+	return raw;
+}
+function binding(field) {
+	return {
+		argument: field.argument,
+		schemaBundle: fixedInputBundle(field.opcode, field.argument),
+		control: {
+			kind: field.control,
+			...field.control === "enum" ? { choices: field.choices.map((value) => ({ value })) } : {}
+		},
+		read(value) {
+			return field.control === "number" ? existingFixedNumber(value) : normalizeChoice(field, literalString(value));
+		},
+		encode(value) {
+			if (field.control === "number") {
+				const parsed = parseFixedNumberInput(value);
+				if (parsed.kind !== "valid") throw new TypeError("Invalid new numeric input.");
+				return parsed.token;
+			}
+			const raw = literalString(value), normalized = normalizeChoice(field, raw);
+			if (!field.choices.includes(normalized)) throw new TypeError("Unsupported fixed choice.");
+			return field.shape === "menu-shadow" || field.shape === "direct-field-dropdown" ? normalized : raw;
+		},
+		validateCandidate(value) {
+			try {
+				if (field.control === "number") {
+					const number = existingFixedNumber(value);
+					if (field.maxBytes && (!Number.isSafeInteger(Math.trunc(number)) || Math.trunc(number) < 1)) return [{ message: "Invalid named body size." }];
+					return [];
+				}
+				return field.choices.includes(normalizeChoice(field, literalString(value))) ? [] : [{ message: "Unsupported fixed choice." }];
+			} catch {
+				return [{ message: "Invalid fixed input." }];
+			}
+		}
+	};
+}
+var fixedInputEditors = [...new Set(fields.map((f) => f.opcode))].map((opcode) => ({
+	apiVersion: 1,
+	extensionId,
+	editorId: `${opcode}-fixed-inputs`,
+	opcodes: [`${extensionId}_${opcode}`],
+	contractId: `${repository}/${opcode}`,
+	contractRevision: "fixed-inputs-v1",
+	bindings: fields.filter((field) => field.opcode === opcode).map(binding),
+	validationContext: () => ({
+		consumerId: repository,
+		nowMs: 0,
+		settings: null
+	})
+}));
+/** Registration follows the advertised opcode membership and the optional host capability. */
+function fixedInputRegistration(scratch) {
+	const host = scratch ?? {};
+	let active;
+	let membership = "";
+	const removers = [];
+	let stopped = false;
+	const clear = () => {
+		host.vm?.runtime?.off?.("RUNTIME_DISPOSED", shutdown);
+		for (const remove of removers.splice(0).reverse()) remove();
+		active = void 0;
+		membership = "";
+	};
+	const shutdown = () => {
+		stopped = true;
+		clear();
+	};
+	return {
+		ensure(visibleOpcodes) {
+			const api = host.gui?.blockEditors;
+			const definitions = fixedInputEditors.filter((definition) => definition.opcodes.every((opcode) => visibleOpcodes.includes(opcode)));
+			const key = definitions.map((definition) => definition.editorId).join(",");
+			if (stopped || api === active && membership === key) return;
+			clear();
+			if (api?.apiVersion !== 1 || typeof api.registerFixedInputEditor !== "function" || !definitions.length) return;
+			try {
+				for (const definition of definitions) {
+					const remove = api.registerFixedInputEditor.call(api, definition);
+					if (typeof remove !== "function") throw new TypeError("Invalid fixed input cleanup.");
+					removers.push(remove);
+				}
+				active = api;
+				membership = key;
+				host.vm?.runtime?.on?.("RUNTIME_DISPOSED", shutdown);
+			} catch (error) {
+				clear();
+				throw error;
+			}
+		},
+		dispose: shutdown
+	};
+}
+var block_definitions_default = {
+	extensionName: "Document Data",
+	menus: {
+		"documentFormat": {
+			"acceptReporters": true,
+			"items": ["html", "markdown"]
+		},
+		"sourceDocuments": {
+			"acceptReporters": false,
+			"items": ["—"]
+		}
+	},
+	blocks: [
+		{
+			"opcode": "parseHtml",
+			"blockType": "COMMAND",
+			"text": "parse HTML [TEXT] as document [NAME]",
+			"description": "Parse HTML into a target-local named document tree. This does not sanitize HTML.",
+			"arguments": {
+				"TEXT": {
+					"type": "STRING",
+					"defaultValue": "<p>Hello</p>"
+				},
+				"NAME": {
+					"type": "STRING",
+					"defaultValue": "page"
+				}
+			}
+		},
+		{
+			"opcode": "parseMarkdown",
+			"blockType": "COMMAND",
+			"text": "parse Markdown [TEXT] as document [NAME]",
+			"description": "Parse Markdown into a target-local named syntax tree.",
+			"arguments": {
+				"TEXT": {
+					"type": "STRING",
+					"defaultValue": "# Hello"
+				},
+				"NAME": {
+					"type": "STRING",
+					"defaultValue": "page"
+				}
+			}
+		},
+		{
+			"opcode": "hasDocument",
+			"blockType": "BOOLEAN",
+			"text": "document [NAME] exists?",
+			"description": "Report whether the current target has the named document.",
+			"arguments": { "NAME": {
+				"type": "STRING",
+				"defaultValue": "page"
+			} }
+		},
+		{
+			"opcode": "deleteDocument",
+			"blockType": "COMMAND",
+			"text": "delete document [NAME]",
+			"description": "Delete the named document from the current target.",
+			"arguments": { "NAME": {
+				"type": "STRING",
+				"defaultValue": "page"
+			} }
+		},
+		{
+			"opcode": "documentKind",
+			"blockType": "REPORTER",
+			"text": "kind of document [NAME]",
+			"description": "Return html or markdown.",
+			"arguments": { "NAME": {
+				"type": "STRING",
+				"defaultValue": "page"
+			} }
+		},
+		{
+			"opcode": "getDocumentText",
+			"blockType": "REPORTER",
+			"text": "text in document [NAME] at [LOCATION]",
+			"description": "Get text at the root, a numeric tree path, or a simple HTML selector.",
+			"arguments": {
+				"NAME": {
+					"type": "STRING",
+					"defaultValue": "page"
+				},
+				"LOCATION": {
+					"type": "STRING",
+					"defaultValue": "$"
+				}
+			}
+		},
+		{
+			"opcode": "replaceDocumentText",
+			"blockType": "COMMAND",
+			"text": "replace text in document [NAME] at [LOCATION] with [TEXT]",
+			"description": "Immutably replace text at the selected node.",
+			"arguments": {
+				"NAME": {
+					"type": "STRING",
+					"defaultValue": "page"
+				},
+				"LOCATION": {
+					"type": "STRING",
+					"defaultValue": "$"
+				},
+				"TEXT": {
+					"type": "STRING",
+					"defaultValue": "Hello"
+				}
+			}
+		},
+		{
+			"opcode": "serializeDocument",
+			"blockType": "REPORTER",
+			"text": "serialize document [NAME] as [FORMAT]",
+			"description": "Deterministically serialize a document in its native format. Cross-format conversion is rejected as lossy.",
+			"arguments": {
+				"NAME": {
+					"type": "STRING",
+					"defaultValue": "page"
+				},
+				"FORMAT": {
+					"type": "STRING",
+					"defaultValue": "html",
+					"menu": "documentFormat"
+				}
+			}
+		},
+		{
+			"opcode": "createYamlSource",
+			"blockType": "COMMAND",
+			"text": "store YAML [TEXT] as source document [NAME] file [FILENAME]",
+			"description": "Validate YAML and retain its exact source in SB3 extension storage. Enabled by startup DOCUMENT_SOURCE.",
+			"arguments": {
+				"TEXT": {
+					"type": "STRING",
+					"defaultValue": "value: example\n"
+				},
+				"NAME": {
+					"type": "STRING",
+					"defaultValue": "settings"
+				},
+				"FILENAME": {
+					"type": "STRING",
+					"defaultValue": "settings.yaml"
+				}
+			}
+		},
+		{
+			"opcode": "createJsonSource",
+			"blockType": "COMMAND",
+			"text": "store JSON [TEXT] as source document [NAME] file [FILENAME]",
+			"description": "Validate JSON and retain its exact source in SB3 extension storage. Enabled by startup DOCUMENT_SOURCE.",
+			"arguments": {
+				"TEXT": {
+					"type": "STRING",
+					"defaultValue": "{\"value\":\"example\"}"
+				},
+				"NAME": {
+					"type": "STRING",
+					"defaultValue": "settings"
+				},
+				"FILENAME": {
+					"type": "STRING",
+					"defaultValue": "settings.json"
+				}
+			}
+		},
+		{
+			"opcode": "hasSourceDocument",
+			"blockType": "BOOLEAN",
+			"text": "source document [NAME] exists?",
+			"description": "Report whether the current project owns a persistent source document.",
+			"arguments": { "NAME": {
+				"type": "STRING",
+				"defaultValue": "settings"
+			} }
+		},
+		{
+			"opcode": "getSourceDocument",
+			"blockType": "REPORTER",
+			"text": "original source of document [NAME]",
+			"description": "Return the original YAML/JSON text including comments and line endings.",
+			"arguments": { "NAME": {
+				"type": "STRING",
+				"defaultValue": "settings"
+			} }
+		},
+		{
+			"opcode": "sourceDocumentFormat",
+			"blockType": "REPORTER",
+			"text": "format of source document [NAME]",
+			"description": "Return yaml or json without converting the source.",
+			"arguments": { "NAME": {
+				"type": "STRING",
+				"defaultValue": "settings"
+			} }
+		},
+		{
+			"opcode": "deleteSourceDocument",
+			"blockType": "COMMAND",
+			"text": "delete source document [NAME]",
+			"description": "Remove one persistent source document from the project.",
+			"arguments": { "NAME": {
+				"type": "STRING",
+				"defaultValue": "settings"
+			} }
+		},
+		{
+			"opcode": "sourceDocument",
+			"blockType": "HAT",
+			"text": "embedded document [DOCUMENT]",
+			"description": "Inert declaration referring to a persistent source document. It never executes a document.",
+			"arguments": { "DOCUMENT": {
+				"type": "STRING",
+				"defaultValue": "",
+				"menu": "sourceDocuments"
+			} }
+		}
+	]
+};
+//#endregion
+//#region \0@oxc-project+runtime@0.148.0/helpers/esm/typeof.js
+var import__2020 = /* @__PURE__ */ __toESM(require__2020(), 1);
+function _typeof(o) {
+	"@babel/helpers - typeof";
+	return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function(o) {
+		return typeof o;
+	} : function(o) {
+		return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o;
+	}, _typeof(o);
+}
+//#endregion
+//#region \0@oxc-project+runtime@0.148.0/helpers/esm/toPrimitive.js
+function toPrimitive(t, r) {
+	if ("object" != _typeof(t) || !t) return t;
+	var e = t[Symbol.toPrimitive];
+	if (void 0 !== e) {
+		var i = e.call(t, r || "default");
+		if ("object" != _typeof(i)) return i;
+		throw new TypeError("@@toPrimitive must return a primitive value.");
+	}
+	return ("string" === r ? String : Number)(t);
+}
+//#endregion
+//#region \0@oxc-project+runtime@0.148.0/helpers/esm/toPropertyKey.js
+function toPropertyKey(t) {
+	var i = toPrimitive(t, "string");
+	return "symbol" == _typeof(i) ? i : i + "";
+}
+//#endregion
+//#region \0@oxc-project+runtime@0.148.0/helpers/esm/defineProperty.js
+function _defineProperty(e, r, t) {
+	return (r = toPropertyKey(r)) in e ? Object.defineProperty(e, r, {
+		value: t,
+		enumerable: !0,
+		configurable: !0,
+		writable: !0
+	}) : e[r] = t, e;
+}
+//#endregion
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.2.0-rc.0/node_modules/@kubohiroya/turbowarp-document-source/dist/wire.js
+var PREFIX = "tw-embedded-yaml:1:";
+var SourceDocumentError = class extends Error {
+	constructor(code, message) {
+		super(message);
+		_defineProperty(this, "code", void 0);
+		this.name = "SourceDocumentError";
+		this.code = code;
+	}
+};
+function fail$2(code, message) {
+	throw new SourceDocumentError(code, message);
+}
+var hasControlCharacters = (value) => Array.from(value).some((character) => {
+	const code = character.codePointAt(0);
+	return code < 32 || code === 127;
+});
+var identifier = (value, name) => {
+	if (typeof value !== "string" || !value.length || value.length > 1024 || hasControlCharacters(value)) fail$2("REFERENCE_INVALID", `${name} must be a bounded nonempty identifier.`);
+	return value;
+};
+function encodeSourceDocumentReference(reference) {
+	if (!reference || typeof reference !== "object") fail$2("REFERENCE_INVALID", "A document reference is required.");
+	const providerId = identifier(reference.providerId, "providerId");
+	const documentId = identifier(reference.documentId, "documentId");
+	try {
+		return `${PREFIX}${encodeURIComponent(providerId)}:${encodeURIComponent(documentId)}`;
+	} catch {
+		return fail$2("REFERENCE_INVALID", "The reference contains invalid Unicode.");
+	}
+}
+function decodeSourceDocumentReference(value) {
+	if (typeof value !== "string" || value.length > 8192 || !value.startsWith(PREFIX)) fail$2("REFERENCE_INVALID", "The block does not contain a valid source document reference.");
+	const parts = value.slice(19).split(":");
+	if (parts.length !== 2) fail$2("REFERENCE_INVALID", "The source document reference is malformed.");
+	let reference;
+	try {
+		reference = {
+			providerId: decodeURIComponent(parts[0]),
+			documentId: decodeURIComponent(parts[1])
+		};
+	} catch {
+		return fail$2("REFERENCE_INVALID", "The source document reference encoding is invalid.");
+	}
+	if (encodeSourceDocumentReference(reference) !== value) fail$2("REFERENCE_INVALID", "The source document reference is not canonical.");
+	return Object.freeze(reference);
+}
+//#endregion
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.2.0-rc.0/node_modules/@kubohiroya/turbowarp-document-source/dist/schema.js
+var sourceDocumentSchemaLimits = Object.freeze({
+	maxBytes: 1048576,
+	maxDepth: 64,
+	maxNodes: 1e5
+});
+/** Copy finite JSON without invoking accessors or serialization hooks. This does not interpret JSON Schema. */
+function normalizeSourceDocumentSchema(metadata) {
+	if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) fail$2("SCHEMA_INVALID", "Inline schema metadata must be an object.");
+	const properties = Object.getOwnPropertyDescriptors(metadata);
+	if (!properties.id || !Object.hasOwn(properties.id, "value") || !properties.schema || !Object.hasOwn(properties.schema, "value") || Object.keys(properties).some((key) => key !== "id" && key !== "schema")) fail$2("SCHEMA_INVALID", "Inline schema metadata requires only id and schema.");
+	const id = identifier(properties.id.value, "schema id");
+	const root = properties.schema.value;
+	if (!root || typeof root !== "object" || Array.isArray(root)) fail$2("SCHEMA_INVALID", "An inline JSON Schema object is required.");
+	const path = /* @__PURE__ */ new Set();
+	let nodes = 0, characters = 0;
+	const clone = (value, depth) => {
+		if (++nodes > sourceDocumentSchemaLimits.maxNodes || depth > sourceDocumentSchemaLimits.maxDepth) fail$2("SCHEMA_LIMIT", "The inline schema is too deeply nested or has too many values.");
+		if (value === null || typeof value === "boolean") return value;
+		if (typeof value === "number") {
+			if (!Number.isFinite(value)) fail$2("SCHEMA_INVALID", "Schema numbers must be finite.");
+			return value;
+		}
+		if (typeof value === "string") {
+			characters += value.length;
+			if (characters > sourceDocumentSchemaLimits.maxBytes) fail$2("SCHEMA_LIMIT", "The inline schema exceeds its size limit.");
+			return value;
+		}
+		if (!value || typeof value !== "object") fail$2("SCHEMA_INVALID", "Schemas must contain only JSON values.");
+		if (path.has(value)) fail$2("SCHEMA_INVALID", "Cyclic schema payloads are unsupported.");
+		if (Object.getOwnPropertySymbols(value).length) fail$2("SCHEMA_INVALID", "Schemas cannot contain symbol properties.");
+		const prototype = Object.getPrototypeOf(value);
+		if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) fail$2("SCHEMA_INVALID", "Schemas must use plain JSON objects.");
+		path.add(value);
+		const result = Array.isArray(value) ? [] : {};
+		const properties = Object.getOwnPropertyDescriptors(value);
+		if (Array.isArray(value) && (value.length > sourceDocumentSchemaLimits.maxNodes || Object.keys(properties).filter((key) => key !== "length").some((key, index) => key !== String(index)) || Object.keys(properties).length !== value.length + 1)) fail$2("SCHEMA_INVALID", "Schema arrays must not contain holes or custom properties.");
+		for (const [key, property] of Object.entries(properties)) {
+			if (Array.isArray(value) && key === "length") continue;
+			if (!Object.hasOwn(property, "value") || !property.enumerable) fail$2("SCHEMA_INVALID", "Schema payloads cannot contain accessors or hidden properties.");
+			characters += key.length;
+			if (characters > sourceDocumentSchemaLimits.maxBytes) fail$2("SCHEMA_LIMIT", "The inline schema exceeds its size limit.");
+			Object.defineProperty(result, key, {
+				value: clone(property.value, depth + 1),
+				enumerable: true,
+				writable: false,
+				configurable: false
+			});
+		}
+		path.delete(value);
+		return Object.freeze(result);
+	};
+	const schema = clone(root, 0);
+	const result = Object.freeze({
+		id,
+		schema
+	});
+	if (new globalThis.TextEncoder().encode(JSON.stringify(result)).byteLength > sourceDocumentSchemaLimits.maxBytes) fail$2("SCHEMA_LIMIT", "The inline schema exceeds its UTF-8 size limit.");
+	return result;
+}
+//#endregion
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.2.0-rc.0/node_modules/@kubohiroya/turbowarp-document-source/dist/preview.js
+function fail$1(message) {
+	throw new SourceDocumentError("DOCUMENT_PREVIEW_INVALID", message);
+}
+var plain = (value) => value && typeof value === "object" && !Array.isArray(value) && [Object.prototype, null].includes(Object.getPrototypeOf(value));
+/** Copy finite declarative JSON only; no project archives, owner payloads or executable callbacks. */
+function normalizeSourceDocumentPreview(model, requestedKind) {
+	identifier(requestedKind, "preview representation kind");
+	if (!plain(model)) fail$1("A declarative document preview is required.");
+	const allowed = /* @__PURE__ */ new Set([
+		"kind",
+		"source",
+		"blocks",
+		"rootIds",
+		"blockDefinitions",
+		"menus"
+	]);
+	if (Object.keys(model).some((key) => !allowed.has(key))) fail$1("A preview cannot contain project, archive or asset payloads.");
+	const ancestors = /* @__PURE__ */ new Set();
+	let nodes = 0, bytes = 0;
+	const copy = (value, depth = 0) => {
+		if (++nodes > 5e5 || depth > 80) fail$1("The document preview exceeds its structural limit.");
+		if (value === null || typeof value === "boolean") return value;
+		if (typeof value === "number") {
+			if (!Number.isFinite(value)) fail$1("Preview numbers must be finite.");
+			return value;
+		}
+		if (typeof value === "string") {
+			bytes += new TextEncoder().encode(value).byteLength;
+			if (bytes > 8388608) fail$1("The document preview exceeds its byte limit.");
+			return value;
+		}
+		if (!value || typeof value !== "object" || ancestors.has(value) || !Array.isArray(value) && !plain(value)) fail$1("Preview data must be finite plain JSON without callbacks.");
+		if (Object.getOwnPropertySymbols(value).length) fail$1("Preview JSON cannot contain symbols.");
+		const properties = Object.getOwnPropertyDescriptors(value), array = Array.isArray(value), result = array ? [] : {};
+		if (array && (!Number.isSafeInteger(value.length) || Object.keys(properties).length !== value.length + 1)) fail$1("Preview arrays cannot contain holes or custom fields.");
+		ancestors.add(value);
+		for (const [key, descriptor] of Object.entries(properties)) {
+			if (array && key === "length") continue;
+			if (!Object.hasOwn(descriptor, "value") || !descriptor.enumerable) fail$1("Preview JSON cannot contain accessors or hidden fields.");
+			bytes += new TextEncoder().encode(key).byteLength;
+			if (bytes > 8388608) fail$1("The document preview exceeds its byte limit.");
+			Object.defineProperty(result, key, {
+				value: copy(descriptor.value, depth + 1),
+				enumerable: true
+			});
+		}
+		ancestors.delete(value);
+		return Object.freeze(result);
+	};
+	const result = copy(model);
+	if (result.kind !== requestedKind || typeof result.source !== "string") fail$1("A preview must identify the requested kind and its source.");
+	if (result.blocks !== void 0 && (!plain(result.blocks) || Object.keys(result.blocks).length > 1e5 || Object.values(result.blocks).some((block) => !plain(block) || typeof block.opcode !== "string"))) fail$1("Preview blocks must be a bounded serialized block dictionary.");
+	if (result.rootIds !== void 0 && (!Array.isArray(result.rootIds) || result.rootIds.length > 256 || new Set(result.rootIds).size !== result.rootIds.length || result.rootIds.some((id) => typeof id !== "string" || !Object.hasOwn(result.blocks || {}, id)))) fail$1("Preview roots must identify distinct included blocks.");
+	if (result.blockDefinitions !== void 0) {
+		if (!Array.isArray(result.blockDefinitions) || result.blockDefinitions.length > 4096) fail$1("Preview block definitions must be a bounded array.");
+		const seen = /* @__PURE__ */ new Set();
+		for (const definition of result.blockDefinitions) {
+			if (!plain(definition) || typeof definition.opcode !== "string" || !definition.opcode || definition.opcode.length > 1024 || seen.has(definition.opcode) || typeof definition.blockType !== "string" || !(typeof definition.text === "string" || Array.isArray(definition.text) && definition.text.every((text) => typeof text === "string"))) fail$1("Preview definitions require distinct full opcodes and declarative labels.");
+			if (definition.blockIconURI !== void 0) {
+				if (typeof definition.blockIconURI !== "string") fail$1("A preview block icon must be an image URI.");
+				let uri;
+				try {
+					uri = new URL(definition.blockIconURI, "https://preview.invalid/");
+				} catch {
+					fail$1("A preview block icon URI is invalid.");
+				}
+				if (![
+					"http:",
+					"https:",
+					"data:"
+				].includes(uri.protocol) || uri.protocol === "data:" && !/^data:image\//iu.test(definition.blockIconURI)) fail$1("A preview cannot include executable icon URIs.");
+			}
+			seen.add(definition.opcode);
+		}
+	}
+	if (result.menus !== void 0 && (!plain(result.menus) || Object.values(result.menus).some((menu) => !plain(menu) || !Array.isArray(menu.items)))) fail$1("Preview menus must contain static item arrays.");
+	if (new TextEncoder().encode(JSON.stringify(result)).byteLength > 8388608) fail$1("The serialized preview exceeds its byte limit.");
+	return result;
+}
+//#endregion
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.2.0-rc.0/node_modules/@kubohiroya/turbowarp-document-source/dist/index.js
+var sourceDocumentRegistrySymbol = Symbol.for("@kubohiroya/turbowarp-embedded-yaml/provider-registry/v1");
+//#endregion
+//#region src/source-document/docs-url.js
+function normalizeDocsURL$1(value) {
+	if (typeof value !== "string" || value.length > 8192) fail$2("DOCUMENT_METADATA_INVALID", "Document documentation must use an HTTPS URL.");
+	let url;
+	try {
+		url = new globalThis.URL(value);
+	} catch {
+		return fail$2("DOCUMENT_METADATA_INVALID", "Document documentation URL is invalid.");
+	}
+	if (url.protocol !== "https:" || url.username || url.password || hasControlCharacters(value) || value.includes(" ")) fail$2("DOCUMENT_METADATA_INVALID", "Document documentation must use a fixed HTTPS URL without credentials.");
+	return value;
+}
+//#endregion
+//#region node_modules/.pnpm/jsonc-parser@3.3.1/node_modules/jsonc-parser/lib/esm/impl/scanner.js
 /**
 * Creates a JSON scanner on the given text.
 * If ignoreTrivia is set, whitespaces or comments are ignored.
@@ -7429,7 +8341,7 @@ new Array(maxCachedValues).fill(0).map((_, index) => {
 	return "\r\n" + "	".repeat(index);
 });
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/jsonc-parser@3.3.1/node_modules/jsonc-parser/lib/esm/impl/parser.js
+//#region node_modules/.pnpm/jsonc-parser@3.3.1/node_modules/jsonc-parser/lib/esm/impl/parser.js
 var ParseOptions;
 (function(ParseOptions) {
 	ParseOptions.DEFAULT = { allowTrailingComma: false };
@@ -7676,7 +8588,7 @@ function visit$3(text, visitor, options = ParseOptions.DEFAULT) {
 	return true;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/jsonc-parser@3.3.1/node_modules/jsonc-parser/lib/esm/main.js
+//#region node_modules/.pnpm/jsonc-parser@3.3.1/node_modules/jsonc-parser/lib/esm/main.js
 var ScanError;
 (function(ScanError) {
 	ScanError[ScanError["None"] = 0] = "None";
@@ -7753,7 +8665,7 @@ function printParseErrorCode(code) {
 	return "<unknown ParseErrorCode>";
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/identity.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/identity.js
 var ALIAS = Symbol.for("yaml.alias");
 var DOC = Symbol.for("yaml.document");
 var MAP = Symbol.for("yaml.map");
@@ -7785,7 +8697,7 @@ function isNode(node) {
 }
 var hasAnchor = (node) => (isScalar(node) || isCollection(node)) && !!node.anchor;
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/visit.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/visit.js
 var BREAK$1 = Symbol("break visit");
 var SKIP$2 = Symbol("skip children");
 var REMOVE$1 = Symbol("remove node");
@@ -7971,7 +8883,7 @@ function replaceNode(key, path, node) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/doc/directives.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/doc/directives.js
 var escapeChars = {
 	"!": "%21",
 	",": "%2C",
@@ -8130,7 +9042,7 @@ Directives.defaultYaml = {
 };
 Directives.defaultTags = { "!!": "tag:yaml.org,2002:" };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/doc/anchors.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/doc/anchors.js
 /**
 * Verify that the input string is a valid anchor.
 *
@@ -8189,7 +9101,7 @@ function createNodeAnchors(doc, prefix) {
 	};
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/doc/applyReviver.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/doc/applyReviver.js
 /**
 * Applies the JSON.parse reviver algorithm as defined in the ECMA-262 spec,
 * in section 24.5.1.1 "Runtime Semantics: InternalizeJSONProperty" of the
@@ -8228,7 +9140,7 @@ function applyReviver(reviver, obj, key, val) {
 	return reviver.call(obj, key, val);
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/toJS.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/toJS.js
 /**
 * Recursively convert any node or its contents to native JavaScript
 *
@@ -8261,7 +9173,7 @@ function toJS(value, arg, ctx) {
 	return value;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/Node.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/Node.js
 var NodeBase = class {
 	constructor(type) {
 		Object.defineProperty(this, NODE_TYPE, { value: type });
@@ -8289,7 +9201,7 @@ var NodeBase = class {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/Alias.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/Alias.js
 var Alias = class extends NodeBase {
 	constructor(source) {
 		super(ALIAS);
@@ -8377,7 +9289,7 @@ function getAliasCount(doc, node, anchors) {
 	return 1;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/Scalar.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/Scalar.js
 var isScalarValue = (value) => !value || typeof value !== "function" && typeof value !== "object";
 var Scalar = class extends NodeBase {
 	constructor(value) {
@@ -8397,7 +9309,7 @@ Scalar.PLAIN = "PLAIN";
 Scalar.QUOTE_DOUBLE = "QUOTE_DOUBLE";
 Scalar.QUOTE_SINGLE = "QUOTE_SINGLE";
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/doc/createNode.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/doc/createNode.js
 var defaultTagPrefix = "tag:yaml.org,2002:";
 function findTagObject(value, tagName, tags) {
 	if (tagName) {
@@ -8454,7 +9366,7 @@ function createNode(value, tagName, ctx) {
 	return node;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/Collection.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/Collection.js
 function collectionFromPath(schema, path, value) {
 	let v = value;
 	for (let i = path.length - 1; i >= 0; --i) {
@@ -8567,7 +9479,7 @@ var Collection = class extends NodeBase {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/stringify/stringifyComment.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/stringify/stringifyComment.js
 /**
 * Stringifies a comment.
 *
@@ -8582,7 +9494,7 @@ function indentComment(comment, indent) {
 }
 var lineComment = (str, indent, comment) => str.endsWith("\n") ? indentComment(comment, indent) : comment.includes("\n") ? "\n" + indentComment(comment, indent) : (str.endsWith(" ") ? "" : " ") + comment;
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/stringify/foldFlowLines.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/stringify/foldFlowLines.js
 var FOLD_FLOW = "flow";
 var FOLD_BLOCK = "block";
 var FOLD_QUOTED = "quoted";
@@ -8696,7 +9608,7 @@ function consumeMoreIndentedLines(text, i, indent) {
 	return end;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/stringify/stringifyString.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/stringify/stringifyString.js
 var getFoldOptions = (ctx, isBlock) => ({
 	indentAtStart: isBlock ? ctx.indent.length : ctx.indentAtStart,
 	lineWidth: ctx.options.lineWidth,
@@ -8915,7 +9827,7 @@ function stringifyString(item, ctx, onComment, onChompKeep) {
 	return res;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/stringify/stringify.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/stringify/stringify.js
 function createStringifyContext(doc, options) {
 	const opt = Object.assign({
 		blockQuote: true,
@@ -9015,7 +9927,7 @@ function stringify(item, ctx, onComment, onChompKeep) {
 	return isScalar(node) || str[0] === "{" || str[0] === "[" ? `${props} ${str}` : `${props}\n${ctx.indent}${str}`;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/stringify/stringifyPair.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/stringify/stringifyPair.js
 function stringifyPair({ key, value }, ctx, onComment, onChompKeep) {
 	const { allNullValues, doc, indent, indentStep, options: { commentString, indentSeq, simpleKeys } } = ctx;
 	let keyComment = isNode(key) && key.comment || null;
@@ -9105,12 +10017,12 @@ function stringifyPair({ key, value }, ctx, onComment, onChompKeep) {
 	return str;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/log.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/log.js
 function warn(logLevel, warning) {
 	if (logLevel === "debug" || logLevel === "warn") console.warn(warning);
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/merge.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/merge.js
 var MERGE_KEY = "<<";
 var merge = {
 	identify: (value) => value === MERGE_KEY || typeof value === "symbol" && value.description === MERGE_KEY,
@@ -9146,7 +10058,7 @@ function resolveAliasValue(ctx, value) {
 	return ctx && isAlias(value) ? value.resolve(ctx.doc, ctx) : value;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/addPairToJSMap.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/addPairToJSMap.js
 function addPairToJSMap(ctx, map, { key, value }) {
 	if (isNode(key) && key.addToJSMap) key.addToJSMap(ctx, map, value);
 	else if (isMergeKey(ctx, key)) addMergeToJSMap(ctx, map, value);
@@ -9189,7 +10101,7 @@ function stringifyKey(key, jsKey, ctx) {
 	return JSON.stringify(jsKey);
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/Pair.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/Pair.js
 function createPair(key, value, ctx) {
 	return new Pair(createNode(key, void 0, ctx), createNode(value, void 0, ctx));
 }
@@ -9213,7 +10125,7 @@ var Pair = class Pair {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/stringify/stringifyCollection.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/stringify/stringifyCollection.js
 function stringifyCollection(collection, ctx, options) {
 	return (ctx.inFlow ?? collection.flow ? stringifyFlowCollection : stringifyBlockCollection)(collection, ctx, options);
 }
@@ -9325,7 +10237,7 @@ function addCommentBefore({ indent, options: { commentString } }, lines, comment
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/YAMLMap.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/YAMLMap.js
 function findPair(items, key) {
 	const k = isScalar(key) ? key.value : key;
 	for (const it of items) if (isPair(it)) {
@@ -9424,7 +10336,7 @@ var YAMLMap = class extends Collection {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/common/map.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/common/map.js
 var map$3 = {
 	collection: "map",
 	default: true,
@@ -9437,7 +10349,7 @@ var map$3 = {
 	createNode: (schema, obj, ctx) => YAMLMap.from(schema, obj, ctx)
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/YAMLSeq.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/nodes/YAMLSeq.js
 var YAMLSeq = class extends Collection {
 	static get tagName() {
 		return "tag:yaml.org,2002:seq";
@@ -9534,7 +10446,7 @@ function asItemIndex(key) {
 	return typeof idx === "number" && Number.isInteger(idx) && idx >= 0 ? idx : null;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/common/seq.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/common/seq.js
 var seq = {
 	collection: "seq",
 	default: true,
@@ -9547,7 +10459,7 @@ var seq = {
 	createNode: (schema, obj, ctx) => YAMLSeq.from(schema, obj, ctx)
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/common/string.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/common/string.js
 var string$2 = {
 	identify: (value) => typeof value === "string",
 	default: true,
@@ -9559,7 +10471,7 @@ var string$2 = {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/common/null.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/common/null.js
 var nullTag = {
 	identify: (value) => value == null,
 	createNode: () => new Scalar(null),
@@ -9570,7 +10482,7 @@ var nullTag = {
 	stringify: ({ source }, ctx) => typeof source === "string" && nullTag.test.test(source) ? source : ctx.options.nullStr
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/core/bool.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/core/bool.js
 var boolTag = {
 	identify: (value) => typeof value === "boolean",
 	default: true,
@@ -9585,7 +10497,7 @@ var boolTag = {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/stringify/stringifyNumber.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/stringify/stringifyNumber.js
 function stringifyNumber({ format, minFractionDigits, tag, value }) {
 	if (typeof value === "bigint") return String(value);
 	const num = typeof value === "number" ? value : Number(value);
@@ -9603,7 +10515,7 @@ function stringifyNumber({ format, minFractionDigits, tag, value }) {
 	return n;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/core/float.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/core/float.js
 var floatNaN$1 = {
 	identify: (value) => typeof value === "number",
 	default: true,
@@ -9638,7 +10550,7 @@ var float$1 = {
 	stringify: stringifyNumber
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/core/int.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/core/int.js
 var intIdentify$2 = (value) => typeof value === "bigint" || Number.isInteger(value);
 var intResolve$1 = (str, offset, radix, { intAsBigInt }) => intAsBigInt ? BigInt(str) : parseInt(str.substring(offset), radix);
 function intStringify$1(node, radix, prefix) {
@@ -9673,7 +10585,7 @@ var intHex$1 = {
 	stringify: (node) => intStringify$1(node, 16, "0x")
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/core/schema.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/core/schema.js
 var schema$2 = [
 	map$3,
 	seq,
@@ -9688,7 +10600,7 @@ var schema$2 = [
 	float$1
 ];
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/json/schema.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/json/schema.js
 function intIdentify$1(value) {
 	return typeof value === "bigint" || Number.isInteger(value);
 }
@@ -9745,7 +10657,7 @@ var schema$1 = [map$3, seq].concat(jsonScalars, {
 	}
 });
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/binary.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/binary.js
 var binary = {
 	identify: (value) => value instanceof Uint8Array,
 	default: false,
@@ -9794,7 +10706,7 @@ var binary = {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/pairs.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/pairs.js
 function resolvePairs(seq, onError) {
 	if (isSeq(seq)) for (let i = 0; i < seq.items.length; ++i) {
 		let item = seq.items[i];
@@ -9846,7 +10758,7 @@ var pairs = {
 	createNode: createPairs
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/omap.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/omap.js
 var YAMLOMap = class YAMLOMap extends YAMLSeq {
 	constructor() {
 		super();
@@ -9902,7 +10814,7 @@ var omap = {
 	createNode: (schema, iterable, ctx) => YAMLOMap.from(schema, iterable, ctx)
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/bool.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/bool.js
 function boolStringify({ value, source }, ctx) {
 	if (source && (value ? trueTag : falseTag).test.test(source)) return source;
 	return value ? ctx.options.trueStr : ctx.options.falseStr;
@@ -9924,7 +10836,7 @@ var falseTag = {
 	stringify: boolStringify
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/float.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/float.js
 var floatNaN = {
 	identify: (value) => typeof value === "number",
 	default: true,
@@ -9962,7 +10874,7 @@ var float = {
 	stringify: stringifyNumber
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/int.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/int.js
 var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
 function intResolve(str, offset, radix, { intAsBigInt }) {
 	const sign = str[0];
@@ -10028,7 +10940,7 @@ var intHex = {
 	stringify: (node) => intStringify(node, 16, "0x")
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/set.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/set.js
 var YAMLSet = class YAMLSet extends YAMLMap {
 	constructor(schema) {
 		super(schema);
@@ -10090,7 +11002,7 @@ var set = {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/timestamp.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/timestamp.js
 /** Internal types handle bigint as number, because TS can't figure it out. */
 function parseSexagesimal(str, asBigInt) {
 	const sign = str[0];
@@ -10167,7 +11079,7 @@ var timestamp = {
 	stringify: ({ value }) => value?.toISOString().replace(/(T00:00:00)?\.000Z$/, "") ?? ""
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/schema.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/yaml-1.1/schema.js
 var schema = [
 	map$3,
 	seq,
@@ -10192,7 +11104,7 @@ var schema = [
 	timestamp
 ];
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/tags.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/tags.js
 var schemas = /* @__PURE__ */ new Map([
 	["core", schema$2],
 	["failsafe", [
@@ -10258,7 +11170,7 @@ function getTags(customTags, schemaName, addMergeTag) {
 	}, []);
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/Schema.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/schema/Schema.js
 var sortMapEntriesByKey = (a, b) => a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
 var Schema = class Schema {
 	constructor({ compat, customTags, merge, resolveKnownTags, schema, sortMapEntries, toStringDefaults }) {
@@ -10279,7 +11191,7 @@ var Schema = class Schema {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/stringify/stringifyDocument.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/stringify/stringifyDocument.js
 function stringifyDocument(doc, options) {
 	const lines = [];
 	let hasDirectives = options.directives === true;
@@ -10335,7 +11247,7 @@ function stringifyDocument(doc, options) {
 	return lines.join("\n") + "\n";
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/doc/Document.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/doc/Document.js
 var Document = class Document {
 	constructor(value, replacer, options) {
 		/** A comment before this Document */
@@ -10600,7 +11512,7 @@ function assertCollection(contents) {
 	throw new Error("Expected a YAML collection as document contents");
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/errors.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/errors.js
 var YAMLError = class extends Error {
 	constructor(name, pos, code, message) {
 		super();
@@ -10647,7 +11559,7 @@ var prettifyError = (src, lc) => (error) => {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/resolve-props.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/resolve-props.js
 function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIndent, startOnNewline }) {
 	let spaceBefore = false;
 	let atNewline = startOnNewline;
@@ -10751,7 +11663,7 @@ function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIn
 	};
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/util-contains-newline.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/util-contains-newline.js
 function containsNewline(key) {
 	if (!key) return null;
 	switch (key.type) {
@@ -10777,7 +11689,7 @@ function containsNewline(key) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/util-flow-indent-check.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/util-flow-indent-check.js
 function flowIndentCheck(indent, fc, onError) {
 	if (fc?.type === "flow-collection") {
 		const end = fc.end[0];
@@ -10785,7 +11697,7 @@ function flowIndentCheck(indent, fc, onError) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/util-map-includes.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/util-map-includes.js
 function mapIncludes(ctx, items, search) {
 	const { uniqueKeys } = ctx.options;
 	if (uniqueKeys === false) return false;
@@ -10793,7 +11705,7 @@ function mapIncludes(ctx, items, search) {
 	return items.some((pair) => isEqual(pair.key, search));
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/resolve-block-map.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/resolve-block-map.js
 var startColMsg = "All mapping items must start at the same column";
 function resolveBlockMap({ composeNode, composeEmptyNode }, ctx, bm, onError, tag) {
 	const map = new ((tag?.nodeClass) ?? YAMLMap)(ctx.schema);
@@ -10872,7 +11784,7 @@ function resolveBlockMap({ composeNode, composeEmptyNode }, ctx, bm, onError, ta
 	return map;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/resolve-block-seq.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/resolve-block-seq.js
 function resolveBlockSeq({ composeNode, composeEmptyNode }, ctx, bs, onError, tag) {
 	const seq = new ((tag?.nodeClass) ?? YAMLSeq)(ctx.schema);
 	if (ctx.atRoot) ctx.atRoot = false;
@@ -10911,7 +11823,7 @@ function resolveBlockSeq({ composeNode, composeEmptyNode }, ctx, bs, onError, ta
 	return seq;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/resolve-end.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/resolve-end.js
 function resolveEnd(end, offset, reqSpace, onError) {
 	let comment = "";
 	if (end) {
@@ -10946,7 +11858,7 @@ function resolveEnd(end, offset, reqSpace, onError) {
 	};
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/resolve-flow-collection.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/resolve-flow-collection.js
 var blockMsg = "Block collections are not allowed within flow collections";
 var isBlock = (token) => token && (token.type === "block-map" || token.type === "block-seq");
 function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onError, tag) {
@@ -11098,7 +12010,7 @@ function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onErr
 	return coll;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/compose-collection.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/compose-collection.js
 function resolveCollection(CN, ctx, token, onError, tagName, tag) {
 	const coll = token.type === "block-map" ? resolveBlockMap(CN, ctx, token, onError, tag) : token.type === "block-seq" ? resolveBlockSeq(CN, ctx, token, onError, tag) : resolveFlowCollection(CN, ctx, token, onError, tag);
 	const Coll = coll.constructor;
@@ -11140,7 +12052,7 @@ function composeCollection(CN, ctx, token, props, onError) {
 	return node;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/resolve-block-scalar.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/resolve-block-scalar.js
 function resolveBlockScalar(ctx, scalar, onError) {
 	const start = scalar.offset;
 	const header = parseBlockScalarHeader(scalar, ctx.options.strict, onError);
@@ -11313,7 +12225,7 @@ function splitLines(source) {
 	return lines;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/resolve-flow-scalar.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/resolve-flow-scalar.js
 function resolveFlowScalar(scalar, strict, onError) {
 	const { offset, type, source, end } = scalar;
 	let _type;
@@ -11513,7 +12425,7 @@ function parseCharCode(source, offset, length, onError) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/compose-scalar.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/compose-scalar.js
 function composeScalar(ctx, token, tagToken, onError) {
 	const { value, type, comment, range } = token.type === "block-scalar" ? resolveBlockScalar(ctx, token, onError) : resolveFlowScalar(token, ctx.options.strict, onError);
 	const tagName = tagToken ? ctx.directives.tagName(tagToken.source, (msg) => onError(tagToken, "TAG_RESOLVE_FAILED", msg)) : null;
@@ -11567,7 +12479,7 @@ function findScalarTagByTest({ atKey, directives, schema }, value, token, onErro
 	return tag;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/util-empty-scalar-position.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/util-empty-scalar-position.js
 function emptyScalarPosition(offset, before, pos) {
 	if (before) {
 		pos ?? (pos = before.length);
@@ -11591,7 +12503,7 @@ function emptyScalarPosition(offset, before, pos) {
 	return offset;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/compose-node.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/compose-node.js
 var CN = {
 	composeNode,
 	composeEmptyNode
@@ -11671,7 +12583,7 @@ function composeAlias({ options }, { offset, source, end }, onError) {
 	return alias;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/compose-doc.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/compose-doc.js
 function composeDoc(options, directives, { offset, start, value, end }, onError) {
 	const doc = new Document(void 0, Object.assign({ _directives: directives }, options));
 	const ctx = {
@@ -11705,7 +12617,7 @@ function composeDoc(options, directives, { offset, start, value, end }, onError)
 	return doc;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/composer.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/compose/composer.js
 function getErrorPos(src) {
 	if (typeof src === "number") return [src, src + 1];
 	if (Array.isArray(src)) return src.length === 2 ? src : [src[0], src[1]];
@@ -11891,7 +12803,7 @@ var Composer = class {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/parse/cst-visit.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/parse/cst-visit.js
 var BREAK = Symbol("break visit");
 var SKIP$1 = Symbol("skip children");
 var REMOVE = Symbol("remove item");
@@ -12015,7 +12927,7 @@ function tokenType(source) {
 	return null;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/parse/lexer.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/parse/lexer.js
 function isEmpty(ch) {
 	switch (ch) {
 		case void 0:
@@ -12544,7 +13456,7 @@ var Lexer = class {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/parse/line-counter.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/parse/line-counter.js
 /**
 * Tracks newlines during parsing in order to provide an efficient API for
 * determining the one-indexed `{ line, col }` position for any offset
@@ -12588,7 +13500,7 @@ var LineCounter = class {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/parse/parser.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/parse/parser.js
 function includesToken(list, type) {
 	for (let i = 0; i < list.length; ++i) if (list[i].type === type) return true;
 	return false;
@@ -13447,7 +14359,7 @@ var Parser$1 = class {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/public-api.js
+//#region node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/browser/dist/public-api.js
 function parseOptions(options) {
 	const prettyErrors = options.prettyErrors !== false;
 	return {
@@ -13473,7 +14385,7 @@ function parseDocument(source, options = {}) {
 	return doc;
 }
 //#endregion
-//#region ../document-contract-yaml/lib-codec/yaml-json.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.9.0-rc.0/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/yaml-json.js
 var PARSE_LIMITS = {
 	maxInputBytes: 262144,
 	maxDepth: 64,
@@ -13744,7 +14656,6 @@ function yamlPosition(lineCounter, offset) {
 var ParseLimitError = class extends Error {
 	constructor(diagnostic) {
 		super(diagnostic.message);
-		_defineProperty(this, "diagnostic", void 0);
 		this.diagnostic = diagnostic;
 		this.name = "ParseLimitError";
 	}
@@ -13756,7 +14667,7 @@ function isDataArray(value) {
 	return Array.isArray(value);
 }
 //#endregion
-//#region ../document-contract-yaml/lib-codec/codec.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.9.0-rc.0/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/codec.js
 /** Parse through the existing bounded fragment parser; source text remains the owner's data. */
 function parseValue(source, format = "auto") {
 	const parsed = parseData(source, format, { jsonObjects: "json" });
@@ -13772,905 +14683,8 @@ function parseValue(source, format = "auto") {
 		diagnostic: parsed.diagnostic
 	};
 }
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/dynamic/dynamicAnchor.js
-var require_dynamicAnchor = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.dynamicAnchor = void 0;
-	var codegen_1 = require_codegen();
-	var names_1 = require_names();
-	var compile_1 = require_compile();
-	var ref_1 = require_ref();
-	var def = {
-		keyword: "$dynamicAnchor",
-		schemaType: "string",
-		code: (cxt) => dynamicAnchor(cxt, cxt.schema)
-	};
-	function dynamicAnchor(cxt, anchor) {
-		const { gen, it } = cxt;
-		it.schemaEnv.root.dynamicAnchors[anchor] = true;
-		const v = (0, codegen_1._)`${names_1.default.dynamicAnchors}${(0, codegen_1.getProperty)(anchor)}`;
-		const validate = it.errSchemaPath === "#" ? it.validateName : _getValidate(cxt);
-		gen.if((0, codegen_1._)`!${v}`, () => gen.assign(v, validate));
-	}
-	exports.dynamicAnchor = dynamicAnchor;
-	function _getValidate(cxt) {
-		const { schemaEnv, schema, self } = cxt.it;
-		const { root, baseId, localRefs, meta } = schemaEnv.root;
-		const { schemaId } = self.opts;
-		const sch = new compile_1.SchemaEnv({
-			schema,
-			schemaId,
-			root,
-			baseId,
-			localRefs,
-			meta
-		});
-		compile_1.compileSchema.call(self, sch);
-		return (0, ref_1.getValidate)(cxt, sch);
-	}
-	exports.default = def;
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/dynamic/dynamicRef.js
-var require_dynamicRef = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.dynamicRef = void 0;
-	var codegen_1 = require_codegen();
-	var names_1 = require_names();
-	var ref_1 = require_ref();
-	var def = {
-		keyword: "$dynamicRef",
-		schemaType: "string",
-		code: (cxt) => dynamicRef(cxt, cxt.schema)
-	};
-	function dynamicRef(cxt, ref) {
-		const { gen, keyword, it } = cxt;
-		if (ref[0] !== "#") throw new Error(`"${keyword}" only supports hash fragment reference`);
-		const anchor = ref.slice(1);
-		if (it.allErrors) _dynamicRef();
-		else {
-			const valid = gen.let("valid", false);
-			_dynamicRef(valid);
-			cxt.ok(valid);
-		}
-		function _dynamicRef(valid) {
-			if (it.schemaEnv.root.dynamicAnchors[anchor]) {
-				const v = gen.let("_v", (0, codegen_1._)`${names_1.default.dynamicAnchors}${(0, codegen_1.getProperty)(anchor)}`);
-				gen.if(v, _callRef(v, valid), _callRef(it.validateName, valid));
-			} else _callRef(it.validateName, valid)();
-		}
-		function _callRef(validate, valid) {
-			return valid ? () => gen.block(() => {
-				(0, ref_1.callRef)(cxt, validate);
-				gen.let(valid, true);
-			}) : () => (0, ref_1.callRef)(cxt, validate);
-		}
-	}
-	exports.dynamicRef = dynamicRef;
-	exports.default = def;
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/dynamic/recursiveAnchor.js
-var require_recursiveAnchor = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	var dynamicAnchor_1 = require_dynamicAnchor();
-	var util_1 = require_util();
-	exports.default = {
-		keyword: "$recursiveAnchor",
-		schemaType: "boolean",
-		code(cxt) {
-			if (cxt.schema) (0, dynamicAnchor_1.dynamicAnchor)(cxt, "");
-			else (0, util_1.checkStrictMode)(cxt.it, "$recursiveAnchor: false is ignored");
-		}
-	};
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/dynamic/recursiveRef.js
-var require_recursiveRef = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	var dynamicRef_1 = require_dynamicRef();
-	exports.default = {
-		keyword: "$recursiveRef",
-		schemaType: "string",
-		code: (cxt) => (0, dynamicRef_1.dynamicRef)(cxt, cxt.schema)
-	};
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/dynamic/index.js
-var require_dynamic = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	var dynamicAnchor_1 = require_dynamicAnchor();
-	var dynamicRef_1 = require_dynamicRef();
-	var recursiveAnchor_1 = require_recursiveAnchor();
-	var recursiveRef_1 = require_recursiveRef();
-	exports.default = [
-		dynamicAnchor_1.default,
-		dynamicRef_1.default,
-		recursiveAnchor_1.default,
-		recursiveRef_1.default
-	];
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/dependentRequired.js
-var require_dependentRequired = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	var dependencies_1 = require_dependencies();
-	exports.default = {
-		keyword: "dependentRequired",
-		type: "object",
-		schemaType: "object",
-		error: dependencies_1.error,
-		code: (cxt) => (0, dependencies_1.validatePropertyDeps)(cxt)
-	};
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/applicator/dependentSchemas.js
-var require_dependentSchemas = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	var dependencies_1 = require_dependencies();
-	exports.default = {
-		keyword: "dependentSchemas",
-		type: "object",
-		schemaType: "object",
-		code: (cxt) => (0, dependencies_1.validateSchemaDeps)(cxt)
-	};
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/validation/limitContains.js
-var require_limitContains = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	var util_1 = require_util();
-	exports.default = {
-		keyword: ["maxContains", "minContains"],
-		type: "array",
-		schemaType: "number",
-		code({ keyword, parentSchema, it }) {
-			if (parentSchema.contains === void 0) (0, util_1.checkStrictMode)(it, `"${keyword}" without "contains" is ignored`);
-		}
-	};
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/next.js
-var require_next = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	var dependentRequired_1 = require_dependentRequired();
-	var dependentSchemas_1 = require_dependentSchemas();
-	var limitContains_1 = require_limitContains();
-	exports.default = [
-		dependentRequired_1.default,
-		dependentSchemas_1.default,
-		limitContains_1.default
-	];
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/unevaluated/unevaluatedProperties.js
-var require_unevaluatedProperties = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	var codegen_1 = require_codegen();
-	var util_1 = require_util();
-	var names_1 = require_names();
-	exports.default = {
-		keyword: "unevaluatedProperties",
-		type: "object",
-		schemaType: ["boolean", "object"],
-		trackErrors: true,
-		error: {
-			message: "must NOT have unevaluated properties",
-			params: ({ params }) => (0, codegen_1._)`{unevaluatedProperty: ${params.unevaluatedProperty}}`
-		},
-		code(cxt) {
-			const { gen, schema, data, errsCount, it } = cxt;
-			/* istanbul ignore if */
-			if (!errsCount) throw new Error("ajv implementation error");
-			const { allErrors, props } = it;
-			if (props instanceof codegen_1.Name) gen.if((0, codegen_1._)`${props} !== true`, () => gen.forIn("key", data, (key) => gen.if(unevaluatedDynamic(props, key), () => unevaluatedPropCode(key))));
-			else if (props !== true) gen.forIn("key", data, (key) => props === void 0 ? unevaluatedPropCode(key) : gen.if(unevaluatedStatic(props, key), () => unevaluatedPropCode(key)));
-			it.props = true;
-			cxt.ok((0, codegen_1._)`${errsCount} === ${names_1.default.errors}`);
-			function unevaluatedPropCode(key) {
-				if (schema === false) {
-					cxt.setParams({ unevaluatedProperty: key });
-					cxt.error();
-					if (!allErrors) gen.break();
-					return;
-				}
-				if (!(0, util_1.alwaysValidSchema)(it, schema)) {
-					const valid = gen.name("valid");
-					cxt.subschema({
-						keyword: "unevaluatedProperties",
-						dataProp: key,
-						dataPropType: util_1.Type.Str
-					}, valid);
-					if (!allErrors) gen.if((0, codegen_1.not)(valid), () => gen.break());
-				}
-			}
-			function unevaluatedDynamic(evaluatedProps, key) {
-				return (0, codegen_1._)`!${evaluatedProps} || !${evaluatedProps}[${key}]`;
-			}
-			function unevaluatedStatic(evaluatedProps, key) {
-				const ps = [];
-				for (const p in evaluatedProps) if (evaluatedProps[p] === true) ps.push((0, codegen_1._)`${key} !== ${p}`);
-				return (0, codegen_1.and)(...ps);
-			}
-		}
-	};
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/unevaluated/unevaluatedItems.js
-var require_unevaluatedItems = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	var codegen_1 = require_codegen();
-	var util_1 = require_util();
-	exports.default = {
-		keyword: "unevaluatedItems",
-		type: "array",
-		schemaType: ["boolean", "object"],
-		error: {
-			message: ({ params: { len } }) => (0, codegen_1.str)`must NOT have more than ${len} items`,
-			params: ({ params: { len } }) => (0, codegen_1._)`{limit: ${len}}`
-		},
-		code(cxt) {
-			const { gen, schema, data, it } = cxt;
-			const items = it.items || 0;
-			if (items === true) return;
-			const len = gen.const("len", (0, codegen_1._)`${data}.length`);
-			if (schema === false) {
-				cxt.setParams({ len: items });
-				cxt.fail((0, codegen_1._)`${len} > ${items}`);
-			} else if (typeof schema == "object" && !(0, util_1.alwaysValidSchema)(it, schema)) {
-				const valid = gen.var("valid", (0, codegen_1._)`${len} <= ${items}`);
-				gen.if((0, codegen_1.not)(valid), () => validateItems(valid, items));
-				cxt.ok(valid);
-			}
-			it.items = true;
-			function validateItems(valid, from) {
-				gen.forRange("i", from, len, (i) => {
-					cxt.subschema({
-						keyword: "unevaluatedItems",
-						dataProp: i,
-						dataPropType: util_1.Type.Num
-					}, valid);
-					if (!it.allErrors) gen.if((0, codegen_1.not)(valid), () => gen.break());
-				});
-			}
-		}
-	};
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/unevaluated/index.js
-var require_unevaluated = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	var unevaluatedProperties_1 = require_unevaluatedProperties();
-	var unevaluatedItems_1 = require_unevaluatedItems();
-	exports.default = [unevaluatedProperties_1.default, unevaluatedItems_1.default];
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/vocabularies/draft2020.js
-var require_draft2020 = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	var core_1 = require_core();
-	var validation_1 = require_validation();
-	var applicator_1 = require_applicator();
-	var dynamic_1 = require_dynamic();
-	var next_1 = require_next();
-	var unevaluated_1 = require_unevaluated();
-	var format_1 = require_format();
-	var metadata_1 = require_metadata();
-	exports.default = [
-		dynamic_1.default,
-		core_1.default,
-		validation_1.default,
-		(0, applicator_1.default)(true),
-		format_1.default,
-		metadata_1.metadataVocabulary,
-		metadata_1.contentVocabulary,
-		next_1.default,
-		unevaluated_1.default
-	];
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/schema.json
-var schema_exports = /* @__PURE__ */ __exportAll({
-	$comment: () => $comment,
-	$dynamicAnchor: () => $dynamicAnchor$7,
-	$id: () => $id$7,
-	$schema: () => $schema$7,
-	$vocabulary: () => $vocabulary$7,
-	allOf: () => allOf,
-	default: () => schema_default,
-	properties: () => properties$7,
-	title: () => title$7,
-	type: () => type$7
-});
-var $schema$7, $id$7, $vocabulary$7, $dynamicAnchor$7, title$7, allOf, type$7, $comment, properties$7, schema_default;
-var init_schema = __esmMin((() => {
-	$schema$7 = "https://json-schema.org/draft/2020-12/schema";
-	$id$7 = "https://json-schema.org/draft/2020-12/schema";
-	$vocabulary$7 = {
-		"https://json-schema.org/draft/2020-12/vocab/core": true,
-		"https://json-schema.org/draft/2020-12/vocab/applicator": true,
-		"https://json-schema.org/draft/2020-12/vocab/unevaluated": true,
-		"https://json-schema.org/draft/2020-12/vocab/validation": true,
-		"https://json-schema.org/draft/2020-12/vocab/meta-data": true,
-		"https://json-schema.org/draft/2020-12/vocab/format-annotation": true,
-		"https://json-schema.org/draft/2020-12/vocab/content": true
-	};
-	$dynamicAnchor$7 = "meta";
-	title$7 = "Core and Validation specifications meta-schema";
-	allOf = [
-		{ "$ref": "meta/core" },
-		{ "$ref": "meta/applicator" },
-		{ "$ref": "meta/unevaluated" },
-		{ "$ref": "meta/validation" },
-		{ "$ref": "meta/meta-data" },
-		{ "$ref": "meta/format-annotation" },
-		{ "$ref": "meta/content" }
-	];
-	type$7 = ["object", "boolean"];
-	$comment = "This meta-schema also defines keywords that have appeared in previous drafts in order to prevent incompatible extensions as they remain in common use.";
-	properties$7 = {
-		"definitions": {
-			"$comment": "\"definitions\" has been replaced by \"$defs\".",
-			"type": "object",
-			"additionalProperties": { "$dynamicRef": "#meta" },
-			"deprecated": true,
-			"default": {}
-		},
-		"dependencies": {
-			"$comment": "\"dependencies\" has been split and replaced by \"dependentSchemas\" and \"dependentRequired\" in order to serve their differing semantics.",
-			"type": "object",
-			"additionalProperties": { "anyOf": [{ "$dynamicRef": "#meta" }, { "$ref": "meta/validation#/$defs/stringArray" }] },
-			"deprecated": true,
-			"default": {}
-		},
-		"$recursiveAnchor": {
-			"$comment": "\"$recursiveAnchor\" has been replaced by \"$dynamicAnchor\".",
-			"$ref": "meta/core#/$defs/anchorString",
-			"deprecated": true
-		},
-		"$recursiveRef": {
-			"$comment": "\"$recursiveRef\" has been replaced by \"$dynamicRef\".",
-			"$ref": "meta/core#/$defs/uriReferenceString",
-			"deprecated": true
-		}
-	};
-	schema_default = {
-		$schema: $schema$7,
-		$id: $id$7,
-		$vocabulary: $vocabulary$7,
-		$dynamicAnchor: $dynamicAnchor$7,
-		title: title$7,
-		allOf,
-		type: type$7,
-		$comment,
-		properties: properties$7
-	};
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/meta/applicator.json
-var applicator_exports = /* @__PURE__ */ __exportAll({
-	$defs: () => $defs$2,
-	$dynamicAnchor: () => $dynamicAnchor$6,
-	$id: () => $id$6,
-	$schema: () => $schema$6,
-	$vocabulary: () => $vocabulary$6,
-	default: () => applicator_default,
-	properties: () => properties$6,
-	title: () => title$6,
-	type: () => type$6
-});
-var $schema$6, $id$6, $vocabulary$6, $dynamicAnchor$6, title$6, type$6, properties$6, $defs$2, applicator_default;
-var init_applicator = __esmMin((() => {
-	$schema$6 = "https://json-schema.org/draft/2020-12/schema";
-	$id$6 = "https://json-schema.org/draft/2020-12/meta/applicator";
-	$vocabulary$6 = { "https://json-schema.org/draft/2020-12/vocab/applicator": true };
-	$dynamicAnchor$6 = "meta";
-	title$6 = "Applicator vocabulary meta-schema";
-	type$6 = ["object", "boolean"];
-	properties$6 = {
-		"prefixItems": { "$ref": "#/$defs/schemaArray" },
-		"items": { "$dynamicRef": "#meta" },
-		"contains": { "$dynamicRef": "#meta" },
-		"additionalProperties": { "$dynamicRef": "#meta" },
-		"properties": {
-			"type": "object",
-			"additionalProperties": { "$dynamicRef": "#meta" },
-			"default": {}
-		},
-		"patternProperties": {
-			"type": "object",
-			"additionalProperties": { "$dynamicRef": "#meta" },
-			"propertyNames": { "format": "regex" },
-			"default": {}
-		},
-		"dependentSchemas": {
-			"type": "object",
-			"additionalProperties": { "$dynamicRef": "#meta" },
-			"default": {}
-		},
-		"propertyNames": { "$dynamicRef": "#meta" },
-		"if": { "$dynamicRef": "#meta" },
-		"then": { "$dynamicRef": "#meta" },
-		"else": { "$dynamicRef": "#meta" },
-		"allOf": { "$ref": "#/$defs/schemaArray" },
-		"anyOf": { "$ref": "#/$defs/schemaArray" },
-		"oneOf": { "$ref": "#/$defs/schemaArray" },
-		"not": { "$dynamicRef": "#meta" }
-	};
-	$defs$2 = { "schemaArray": {
-		"type": "array",
-		"minItems": 1,
-		"items": { "$dynamicRef": "#meta" }
-	} };
-	applicator_default = {
-		$schema: $schema$6,
-		$id: $id$6,
-		$vocabulary: $vocabulary$6,
-		$dynamicAnchor: $dynamicAnchor$6,
-		title: title$6,
-		type: type$6,
-		properties: properties$6,
-		$defs: $defs$2
-	};
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/meta/unevaluated.json
-var unevaluated_exports = /* @__PURE__ */ __exportAll({
-	$dynamicAnchor: () => $dynamicAnchor$5,
-	$id: () => $id$5,
-	$schema: () => $schema$5,
-	$vocabulary: () => $vocabulary$5,
-	default: () => unevaluated_default,
-	properties: () => properties$5,
-	title: () => title$5,
-	type: () => type$5
-});
-var $schema$5, $id$5, $vocabulary$5, $dynamicAnchor$5, title$5, type$5, properties$5, unevaluated_default;
-var init_unevaluated = __esmMin((() => {
-	$schema$5 = "https://json-schema.org/draft/2020-12/schema";
-	$id$5 = "https://json-schema.org/draft/2020-12/meta/unevaluated";
-	$vocabulary$5 = { "https://json-schema.org/draft/2020-12/vocab/unevaluated": true };
-	$dynamicAnchor$5 = "meta";
-	title$5 = "Unevaluated applicator vocabulary meta-schema";
-	type$5 = ["object", "boolean"];
-	properties$5 = {
-		"unevaluatedItems": { "$dynamicRef": "#meta" },
-		"unevaluatedProperties": { "$dynamicRef": "#meta" }
-	};
-	unevaluated_default = {
-		$schema: $schema$5,
-		$id: $id$5,
-		$vocabulary: $vocabulary$5,
-		$dynamicAnchor: $dynamicAnchor$5,
-		title: title$5,
-		type: type$5,
-		properties: properties$5
-	};
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/meta/content.json
-var content_exports = /* @__PURE__ */ __exportAll({
-	$dynamicAnchor: () => $dynamicAnchor$4,
-	$id: () => $id$4,
-	$schema: () => $schema$4,
-	$vocabulary: () => $vocabulary$4,
-	default: () => content_default,
-	properties: () => properties$4,
-	title: () => title$4,
-	type: () => type$4
-});
-var $schema$4, $id$4, $vocabulary$4, $dynamicAnchor$4, title$4, type$4, properties$4, content_default;
-var init_content = __esmMin((() => {
-	$schema$4 = "https://json-schema.org/draft/2020-12/schema";
-	$id$4 = "https://json-schema.org/draft/2020-12/meta/content";
-	$vocabulary$4 = { "https://json-schema.org/draft/2020-12/vocab/content": true };
-	$dynamicAnchor$4 = "meta";
-	title$4 = "Content vocabulary meta-schema";
-	type$4 = ["object", "boolean"];
-	properties$4 = {
-		"contentEncoding": { "type": "string" },
-		"contentMediaType": { "type": "string" },
-		"contentSchema": { "$dynamicRef": "#meta" }
-	};
-	content_default = {
-		$schema: $schema$4,
-		$id: $id$4,
-		$vocabulary: $vocabulary$4,
-		$dynamicAnchor: $dynamicAnchor$4,
-		title: title$4,
-		type: type$4,
-		properties: properties$4
-	};
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/meta/core.json
-var core_exports = /* @__PURE__ */ __exportAll({
-	$defs: () => $defs$1,
-	$dynamicAnchor: () => $dynamicAnchor$3,
-	$id: () => $id$3,
-	$schema: () => $schema$3,
-	$vocabulary: () => $vocabulary$3,
-	default: () => core_default,
-	properties: () => properties$3,
-	title: () => title$3,
-	type: () => type$3
-});
-var $schema$3, $id$3, $vocabulary$3, $dynamicAnchor$3, title$3, type$3, properties$3, $defs$1, core_default;
-var init_core = __esmMin((() => {
-	$schema$3 = "https://json-schema.org/draft/2020-12/schema";
-	$id$3 = "https://json-schema.org/draft/2020-12/meta/core";
-	$vocabulary$3 = { "https://json-schema.org/draft/2020-12/vocab/core": true };
-	$dynamicAnchor$3 = "meta";
-	title$3 = "Core vocabulary meta-schema";
-	type$3 = ["object", "boolean"];
-	properties$3 = {
-		"$id": {
-			"$ref": "#/$defs/uriReferenceString",
-			"$comment": "Non-empty fragments not allowed.",
-			"pattern": "^[^#]*#?$"
-		},
-		"$schema": { "$ref": "#/$defs/uriString" },
-		"$ref": { "$ref": "#/$defs/uriReferenceString" },
-		"$anchor": { "$ref": "#/$defs/anchorString" },
-		"$dynamicRef": { "$ref": "#/$defs/uriReferenceString" },
-		"$dynamicAnchor": { "$ref": "#/$defs/anchorString" },
-		"$vocabulary": {
-			"type": "object",
-			"propertyNames": { "$ref": "#/$defs/uriString" },
-			"additionalProperties": { "type": "boolean" }
-		},
-		"$comment": { "type": "string" },
-		"$defs": {
-			"type": "object",
-			"additionalProperties": { "$dynamicRef": "#meta" }
-		}
-	};
-	$defs$1 = {
-		"anchorString": {
-			"type": "string",
-			"pattern": "^[A-Za-z_][-A-Za-z0-9._]*$"
-		},
-		"uriString": {
-			"type": "string",
-			"format": "uri"
-		},
-		"uriReferenceString": {
-			"type": "string",
-			"format": "uri-reference"
-		}
-	};
-	core_default = {
-		$schema: $schema$3,
-		$id: $id$3,
-		$vocabulary: $vocabulary$3,
-		$dynamicAnchor: $dynamicAnchor$3,
-		title: title$3,
-		type: type$3,
-		properties: properties$3,
-		$defs: $defs$1
-	};
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/meta/format-annotation.json
-var format_annotation_exports = /* @__PURE__ */ __exportAll({
-	$dynamicAnchor: () => $dynamicAnchor$2,
-	$id: () => $id$2,
-	$schema: () => $schema$2,
-	$vocabulary: () => $vocabulary$2,
-	default: () => format_annotation_default,
-	properties: () => properties$2,
-	title: () => title$2,
-	type: () => type$2
-});
-var $schema$2, $id$2, $vocabulary$2, $dynamicAnchor$2, title$2, type$2, properties$2, format_annotation_default;
-var init_format_annotation = __esmMin((() => {
-	$schema$2 = "https://json-schema.org/draft/2020-12/schema";
-	$id$2 = "https://json-schema.org/draft/2020-12/meta/format-annotation";
-	$vocabulary$2 = { "https://json-schema.org/draft/2020-12/vocab/format-annotation": true };
-	$dynamicAnchor$2 = "meta";
-	title$2 = "Format vocabulary meta-schema for annotation results";
-	type$2 = ["object", "boolean"];
-	properties$2 = { "format": { "type": "string" } };
-	format_annotation_default = {
-		$schema: $schema$2,
-		$id: $id$2,
-		$vocabulary: $vocabulary$2,
-		$dynamicAnchor: $dynamicAnchor$2,
-		title: title$2,
-		type: type$2,
-		properties: properties$2
-	};
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/meta/meta-data.json
-var meta_data_exports = /* @__PURE__ */ __exportAll({
-	$dynamicAnchor: () => $dynamicAnchor$1,
-	$id: () => $id$1,
-	$schema: () => $schema$1,
-	$vocabulary: () => $vocabulary$1,
-	default: () => meta_data_default,
-	properties: () => properties$1,
-	title: () => title$1,
-	type: () => type$1
-});
-var $schema$1, $id$1, $vocabulary$1, $dynamicAnchor$1, title$1, type$1, properties$1, meta_data_default;
-var init_meta_data = __esmMin((() => {
-	$schema$1 = "https://json-schema.org/draft/2020-12/schema";
-	$id$1 = "https://json-schema.org/draft/2020-12/meta/meta-data";
-	$vocabulary$1 = { "https://json-schema.org/draft/2020-12/vocab/meta-data": true };
-	$dynamicAnchor$1 = "meta";
-	title$1 = "Meta-data vocabulary meta-schema";
-	type$1 = ["object", "boolean"];
-	properties$1 = {
-		"title": { "type": "string" },
-		"description": { "type": "string" },
-		"default": true,
-		"deprecated": {
-			"type": "boolean",
-			"default": false
-		},
-		"readOnly": {
-			"type": "boolean",
-			"default": false
-		},
-		"writeOnly": {
-			"type": "boolean",
-			"default": false
-		},
-		"examples": {
-			"type": "array",
-			"items": true
-		}
-	};
-	meta_data_default = {
-		$schema: $schema$1,
-		$id: $id$1,
-		$vocabulary: $vocabulary$1,
-		$dynamicAnchor: $dynamicAnchor$1,
-		title: title$1,
-		type: type$1,
-		properties: properties$1
-	};
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/meta/validation.json
-var validation_exports = /* @__PURE__ */ __exportAll({
-	$defs: () => $defs,
-	$dynamicAnchor: () => $dynamicAnchor,
-	$id: () => $id,
-	$schema: () => $schema,
-	$vocabulary: () => $vocabulary,
-	default: () => validation_default,
-	properties: () => properties,
-	title: () => title,
-	type: () => type
-});
-var $schema, $id, $vocabulary, $dynamicAnchor, title, type, properties, $defs, validation_default;
-var init_validation = __esmMin((() => {
-	$schema = "https://json-schema.org/draft/2020-12/schema";
-	$id = "https://json-schema.org/draft/2020-12/meta/validation";
-	$vocabulary = { "https://json-schema.org/draft/2020-12/vocab/validation": true };
-	$dynamicAnchor = "meta";
-	title = "Validation vocabulary meta-schema";
-	type = ["object", "boolean"];
-	properties = {
-		"type": { "anyOf": [{ "$ref": "#/$defs/simpleTypes" }, {
-			"type": "array",
-			"items": { "$ref": "#/$defs/simpleTypes" },
-			"minItems": 1,
-			"uniqueItems": true
-		}] },
-		"const": true,
-		"enum": {
-			"type": "array",
-			"items": true
-		},
-		"multipleOf": {
-			"type": "number",
-			"exclusiveMinimum": 0
-		},
-		"maximum": { "type": "number" },
-		"exclusiveMaximum": { "type": "number" },
-		"minimum": { "type": "number" },
-		"exclusiveMinimum": { "type": "number" },
-		"maxLength": { "$ref": "#/$defs/nonNegativeInteger" },
-		"minLength": { "$ref": "#/$defs/nonNegativeIntegerDefault0" },
-		"pattern": {
-			"type": "string",
-			"format": "regex"
-		},
-		"maxItems": { "$ref": "#/$defs/nonNegativeInteger" },
-		"minItems": { "$ref": "#/$defs/nonNegativeIntegerDefault0" },
-		"uniqueItems": {
-			"type": "boolean",
-			"default": false
-		},
-		"maxContains": { "$ref": "#/$defs/nonNegativeInteger" },
-		"minContains": {
-			"$ref": "#/$defs/nonNegativeInteger",
-			"default": 1
-		},
-		"maxProperties": { "$ref": "#/$defs/nonNegativeInteger" },
-		"minProperties": { "$ref": "#/$defs/nonNegativeIntegerDefault0" },
-		"required": { "$ref": "#/$defs/stringArray" },
-		"dependentRequired": {
-			"type": "object",
-			"additionalProperties": { "$ref": "#/$defs/stringArray" }
-		}
-	};
-	$defs = {
-		"nonNegativeInteger": {
-			"type": "integer",
-			"minimum": 0
-		},
-		"nonNegativeIntegerDefault0": {
-			"$ref": "#/$defs/nonNegativeInteger",
-			"default": 0
-		},
-		"simpleTypes": { "enum": [
-			"array",
-			"boolean",
-			"integer",
-			"null",
-			"number",
-			"object",
-			"string"
-		] },
-		"stringArray": {
-			"type": "array",
-			"items": { "type": "string" },
-			"uniqueItems": true,
-			"default": []
-		}
-	};
-	validation_default = {
-		$schema,
-		$id,
-		$vocabulary,
-		$dynamicAnchor,
-		title,
-		type,
-		properties,
-		$defs
-	};
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/refs/json-schema-2020-12/index.js
-var require_json_schema_2020_12 = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	var metaSchema = (init_schema(), __toCommonJS(schema_exports).default);
-	var applicator = (init_applicator(), __toCommonJS(applicator_exports).default);
-	var unevaluated = (init_unevaluated(), __toCommonJS(unevaluated_exports).default);
-	var content = (init_content(), __toCommonJS(content_exports).default);
-	var core = (init_core(), __toCommonJS(core_exports).default);
-	var format = (init_format_annotation(), __toCommonJS(format_annotation_exports).default);
-	var metadata = (init_meta_data(), __toCommonJS(meta_data_exports).default);
-	var validation = (init_validation(), __toCommonJS(validation_exports).default);
-	var META_SUPPORT_DATA = ["/properties"];
-	function addMetaSchema2020($data) {
-		[
-			metaSchema,
-			applicator,
-			unevaluated,
-			content,
-			core,
-			with$data(this, format),
-			metadata,
-			with$data(this, validation)
-		].forEach((sch) => this.addMetaSchema(sch, void 0, false));
-		return this;
-		function with$data(ajv, sch) {
-			return $data ? ajv.$dataMetaSchema(sch, META_SUPPORT_DATA) : sch;
-		}
-	}
-	exports.default = addMetaSchema2020;
-}));
-//#endregion
-//#region ../../../../../../private/tmp/document-contract-yaml-deps/node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/2020.js
-var require__2020 = /* @__PURE__ */ __commonJSMin(((exports, module) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.MissingRefError = exports.ValidationError = exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = exports.Ajv2020 = void 0;
-	var core_1 = require_core$1();
-	var draft2020_1 = require_draft2020();
-	var discriminator_1 = require_discriminator();
-	var json_schema_2020_12_1 = require_json_schema_2020_12();
-	var META_SCHEMA_ID = "https://json-schema.org/draft/2020-12/schema";
-	var Ajv2020 = class extends core_1.default {
-		constructor(opts = {}) {
-			super({
-				...opts,
-				dynamicRef: true,
-				next: true,
-				unevaluated: true
-			});
-		}
-		_addVocabularies() {
-			super._addVocabularies();
-			draft2020_1.default.forEach((v) => this.addVocabulary(v));
-			if (this.opts.discriminator) this.addKeyword(discriminator_1.default);
-		}
-		_addDefaultMetaSchema() {
-			super._addDefaultMetaSchema();
-			const { $data, meta } = this.opts;
-			if (!meta) return;
-			json_schema_2020_12_1.default.call(this, $data);
-			this.refs["http://json-schema.org/schema"] = META_SCHEMA_ID;
-		}
-		defaultMeta() {
-			return this.opts.defaultMeta = super.defaultMeta() || (this.getSchema(META_SCHEMA_ID) ? META_SCHEMA_ID : void 0);
-		}
-	};
-	exports.Ajv2020 = Ajv2020;
-	module.exports = exports = Ajv2020;
-	module.exports.Ajv2020 = Ajv2020;
-	Object.defineProperty(exports, "__esModule", { value: true });
-	exports.default = Ajv2020;
-	var validate_1 = require_validate();
-	Object.defineProperty(exports, "KeywordCxt", {
-		enumerable: true,
-		get: function() {
-			return validate_1.KeywordCxt;
-		}
-	});
-	var codegen_1 = require_codegen();
-	Object.defineProperty(exports, "_", {
-		enumerable: true,
-		get: function() {
-			return codegen_1._;
-		}
-	});
-	Object.defineProperty(exports, "str", {
-		enumerable: true,
-		get: function() {
-			return codegen_1.str;
-		}
-	});
-	Object.defineProperty(exports, "stringify", {
-		enumerable: true,
-		get: function() {
-			return codegen_1.stringify;
-		}
-	});
-	Object.defineProperty(exports, "nil", {
-		enumerable: true,
-		get: function() {
-			return codegen_1.nil;
-		}
-	});
-	Object.defineProperty(exports, "Name", {
-		enumerable: true,
-		get: function() {
-			return codegen_1.Name;
-		}
-	});
-	Object.defineProperty(exports, "CodeGen", {
-		enumerable: true,
-		get: function() {
-			return codegen_1.CodeGen;
-		}
-	});
-	var validation_error_1 = require_validation_error();
-	Object.defineProperty(exports, "ValidationError", {
-		enumerable: true,
-		get: function() {
-			return validation_error_1.default;
-		}
-	});
-	var ref_error_1 = require_ref_error();
-	Object.defineProperty(exports, "MissingRefError", {
-		enumerable: true,
-		get: function() {
-			return ref_error_1.default;
-		}
-	});
-}));
-//#endregion
-//#region ../document-contract-yaml/lib-codec/schema.js
-var import_ajv = /* @__PURE__ */ __toESM(require_ajv(), 1);
-var import__2020 = /* @__PURE__ */ __toESM(require__2020(), 1);
 var profiles = {
-	"draft-07": new import_ajv.default({
+	"draft-07": new (/* @__PURE__ */ __toESM(require_ajv(), 1)).default({
 		allErrors: true,
 		strict: false,
 		addUsedSchema: false
@@ -15419,7 +15433,7 @@ function createSourceDocumentProvider(vm) {
 	});
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-string@4.0.0/node_modules/mdast-util-to-string/lib/index.js
+//#region node_modules/.pnpm/mdast-util-to-string@4.0.0/node_modules/mdast-util-to-string/lib/index.js
 /**
 * @typedef {import('mdast').Nodes} Nodes
 *
@@ -15501,7 +15515,7 @@ function node(value) {
 	return Boolean(value && typeof value === "object");
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/decode-named-character-reference@1.3.0/node_modules/decode-named-character-reference/index.dom.js
+//#region node_modules/.pnpm/decode-named-character-reference@1.3.0/node_modules/decode-named-character-reference/index.dom.js
 var element = document.createElement("i");
 /**
 * @param {string} value
@@ -15515,7 +15529,7 @@ function decodeNamedCharacterReference(value) {
 	return character === characterReference ? false : character;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-util-chunked@2.0.1/node_modules/micromark-util-chunked/index.js
+//#region node_modules/.pnpm/micromark-util-chunked@2.0.1/node_modules/micromark-util-chunked/index.js
 /**
 * Like `Array#splice`, but smarter for giant arrays.
 *
@@ -15585,7 +15599,7 @@ function push(list, items) {
 	return items;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-util-combine-extensions@2.0.1/node_modules/micromark-util-combine-extensions/index.js
+//#region node_modules/.pnpm/micromark-util-combine-extensions@2.0.1/node_modules/micromark-util-combine-extensions/index.js
 /**
 * @import {
 *   Extension,
@@ -15656,7 +15670,7 @@ function constructs(existing, list) {
 	splice(existing, 0, 0, before);
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-util-decode-numeric-character-reference@2.0.2/node_modules/micromark-util-decode-numeric-character-reference/index.js
+//#region node_modules/.pnpm/micromark-util-decode-numeric-character-reference@2.0.2/node_modules/micromark-util-decode-numeric-character-reference/index.js
 /**
 * Turn the number (in string form as either hexa- or plain decimal) coming from
 * a numeric character reference into a character.
@@ -15677,7 +15691,7 @@ function decodeNumericCharacterReference(value, base) {
 	return String.fromCodePoint(code);
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-util-normalize-identifier@2.0.1/node_modules/micromark-util-normalize-identifier/index.js
+//#region node_modules/.pnpm/micromark-util-normalize-identifier@2.0.1/node_modules/micromark-util-normalize-identifier/index.js
 /**
 * Normalize an identifier (as found in references, definitions).
 *
@@ -15701,7 +15715,7 @@ function normalizeIdentifier(value) {
 	return value.replace(/[\t\n\r ]+/g, " ").replace(/^ | $/g, "").toLowerCase().toUpperCase();
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-util-character@2.1.1/node_modules/micromark-util-character/index.js
+//#region node_modules/.pnpm/micromark-util-character@2.1.1/node_modules/micromark-util-character/index.js
 /**
 * @import {Code} from 'micromark-util-types'
 */
@@ -15929,7 +15943,7 @@ function regexCheck(regex) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-factory-space@2.0.1/node_modules/micromark-factory-space/index.js
+//#region node_modules/.pnpm/micromark-factory-space@2.0.1/node_modules/micromark-factory-space/index.js
 /**
 * @import {Effects, State, TokenType} from 'micromark-util-types'
 */
@@ -15988,7 +16002,7 @@ function factorySpace(effects, ok, type, max) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/initialize/content.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/initialize/content.js
 /**
 * @import {
 *   InitialConstruct,
@@ -16055,7 +16069,7 @@ function initializeContent(effects) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/initialize/document.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/initialize/document.js
 /**
 * @import {
 *   Construct,
@@ -16271,7 +16285,7 @@ function tokenizeContainer(effects, ok, nok) {
 	return factorySpace(effects, effects.attempt(this.parser.constructs.document, ok, nok), "linePrefix", this.parser.constructs.disable.null.includes("codeIndented") ? void 0 : 4);
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-util-classify-character@2.0.1/node_modules/micromark-util-classify-character/index.js
+//#region node_modules/.pnpm/micromark-util-classify-character@2.0.1/node_modules/micromark-util-classify-character/index.js
 /**
 * @import {Code} from 'micromark-util-types'
 */
@@ -16294,7 +16308,7 @@ function classifyCharacter(code) {
 	if (unicodePunctuation(code)) return 2;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-util-resolve-all@2.0.1/node_modules/micromark-util-resolve-all/index.js
+//#region node_modules/.pnpm/micromark-util-resolve-all@2.0.1/node_modules/micromark-util-resolve-all/index.js
 /**
 * @import {Event, Resolver, TokenizeContext} from 'micromark-util-types'
 */
@@ -16324,7 +16338,7 @@ function resolveAll(constructs, events, context) {
 	return events;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/attention.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/attention.js
 /**
 * @import {
 *   Code,
@@ -16544,7 +16558,7 @@ function movePoint(point, offset) {
 	point._bufferIndex += offset;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/autolink.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/autolink.js
 /**
 * @import {
 *   Construct,
@@ -16755,7 +16769,7 @@ function tokenizeAutolink(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/blank-line.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/blank-line.js
 /**
 * @import {
 *   Construct,
@@ -16812,7 +16826,7 @@ function tokenizeBlankLine(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/block-quote.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/block-quote.js
 /**
 * @import {
 *   Construct,
@@ -16939,7 +16953,7 @@ function exit(effects) {
 	effects.exit("blockQuote");
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/character-escape.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/character-escape.js
 /**
 * @import {
 *   Construct,
@@ -16999,7 +17013,7 @@ function tokenizeCharacterEscape(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/character-reference.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/character-reference.js
 /**
 * @import {
 *   Code,
@@ -17137,7 +17151,7 @@ function tokenizeCharacterReference(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/code-fenced.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/code-fenced.js
 /**
 * @import {
 *   Code,
@@ -17552,7 +17566,7 @@ function tokenizeNonLazyContinuation(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/code-indented.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/code-indented.js
 /**
 * @import {
 *   Construct,
@@ -17696,7 +17710,7 @@ function tokenizeFurtherStart(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/code-text.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/code-text.js
 /**
 * @import {
 *   Construct,
@@ -17881,7 +17895,7 @@ function tokenizeCodeText(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-util-subtokenize@2.1.0/node_modules/micromark-util-subtokenize/lib/splice-buffer.js
+//#region node_modules/.pnpm/micromark-util-subtokenize@2.1.0/node_modules/micromark-util-subtokenize/lib/splice-buffer.js
 /**
 * Some of the internal operations of micromark do lots of editing
 * operations on very large arrays. This runs into problems with two
@@ -18111,7 +18125,7 @@ function chunkedPush(list, right) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-util-subtokenize@2.1.0/node_modules/micromark-util-subtokenize/index.js
+//#region node_modules/.pnpm/micromark-util-subtokenize@2.1.0/node_modules/micromark-util-subtokenize/index.js
 /**
 * @import {Chunk, Event, Token} from 'micromark-util-types'
 */
@@ -18266,7 +18280,7 @@ function subcontent(events, eventIndex) {
 	return gaps;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/content.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/content.js
 /**
 * @import {
 *   Construct,
@@ -18399,7 +18413,7 @@ function tokenizeContinuation(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-factory-destination@2.0.1/node_modules/micromark-factory-destination/index.js
+//#region node_modules/.pnpm/micromark-factory-destination@2.0.1/node_modules/micromark-factory-destination/index.js
 /**
 * @import {Effects, State, TokenType} from 'micromark-util-types'
 */
@@ -18583,7 +18597,7 @@ function factoryDestination(effects, ok, nok, type, literalType, literalMarkerTy
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-factory-label@2.0.1/node_modules/micromark-factory-label/index.js
+//#region node_modules/.pnpm/micromark-factory-label@2.0.1/node_modules/micromark-factory-label/index.js
 /**
 * @import {
 *   Effects,
@@ -18717,7 +18731,7 @@ function factoryLabel(effects, ok, nok, type, markerType, stringType) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-factory-title@2.0.1/node_modules/micromark-factory-title/index.js
+//#region node_modules/.pnpm/micromark-factory-title@2.0.1/node_modules/micromark-factory-title/index.js
 /**
 * @import {
 *   Code,
@@ -18862,7 +18876,7 @@ function factoryTitle(effects, ok, nok, type, markerType, stringType) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-factory-whitespace@2.0.1/node_modules/micromark-factory-whitespace/index.js
+//#region node_modules/.pnpm/micromark-factory-whitespace@2.0.1/node_modules/micromark-factory-whitespace/index.js
 /**
 * @import {Effects, State} from 'micromark-util-types'
 */
@@ -18902,7 +18916,7 @@ function factoryWhitespace(effects, ok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/definition.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/definition.js
 /**
 * @import {
 *   Construct,
@@ -19117,7 +19131,7 @@ function tokenizeTitleBefore(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/hard-break-escape.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/hard-break-escape.js
 /**
 * @import {
 *   Construct,
@@ -19174,7 +19188,7 @@ function tokenizeHardBreakEscape(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/heading-atx.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/heading-atx.js
 /**
 * @import {
 *   Construct,
@@ -19359,7 +19373,7 @@ function tokenizeHeadingAtx(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-util-html-tag-name@2.0.1/node_modules/micromark-util-html-tag-name/index.js
+//#region node_modules/.pnpm/micromark-util-html-tag-name@2.0.1/node_modules/micromark-util-html-tag-name/index.js
 /**
 * List of lowercase HTML “block” tag names.
 *
@@ -19458,7 +19472,7 @@ var htmlRawNames = [
 	"textarea"
 ];
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/html-flow.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/html-flow.js
 /**
 * @import {
 *   Code,
@@ -20231,7 +20245,7 @@ function tokenizeBlankLineBefore(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/html-text.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/html-text.js
 /**
 * @import {
 *   Code,
@@ -20845,7 +20859,7 @@ function tokenizeHtmlText(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/label-end.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/label-end.js
 /**
 * @import {
 *   Construct,
@@ -21315,7 +21329,7 @@ function tokenizeReferenceCollapsed(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/label-start-image.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/label-start-image.js
 /**
 * @import {
 *   Construct,
@@ -21408,7 +21422,7 @@ function tokenizeLabelStartImage(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/label-start-link.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/label-start-link.js
 /**
 * @import {
 *   Construct,
@@ -21456,7 +21470,7 @@ function tokenizeLabelStartLink(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/line-ending.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/line-ending.js
 /**
 * @import {
 *   Construct,
@@ -21486,7 +21500,7 @@ function tokenizeLineEnding(effects, ok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/thematic-break.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/thematic-break.js
 /**
 * @import {
 *   Code,
@@ -21581,7 +21595,7 @@ function tokenizeThematicBreak(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/list.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/list.js
 /**
 * @import {
 *   Code,
@@ -21753,7 +21767,7 @@ function tokenizeListItemPrefixWhitespace(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/setext-underline.js
+//#region node_modules/.pnpm/micromark-core-commonmark@2.0.3/node_modules/micromark-core-commonmark/lib/setext-underline.js
 /**
 * @import {
 *   Code,
@@ -21905,7 +21919,7 @@ function tokenizeSetextUnderline(effects, ok, nok) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/initialize/flow.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/initialize/flow.js
 /**
 * @import {
 *   InitialConstruct,
@@ -21952,7 +21966,7 @@ function initializeFlow(effects) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/initialize/text.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/initialize/text.js
 /**
 * @import {
 *   Code,
@@ -22129,7 +22143,7 @@ function resolveAllLineSuffixes(events, context) {
 	return events;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/constructs.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/constructs.js
 /**
 * @import {Extension} from 'micromark-util-types'
 */
@@ -22207,7 +22221,7 @@ var attentionMarkers = { null: [42, 95] };
 /** @satisfies {Extension['disable']} */
 var disable = { null: [] };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/create-tokenizer.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/create-tokenizer.js
 /**
 * @import {
 *   Chunk,
@@ -22676,7 +22690,7 @@ function serializeChunks(chunks, expandTabs) {
 	return result.join("");
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/parse.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/parse.js
 /**
 * @import {
 *   Create,
@@ -22720,7 +22734,7 @@ function parse(options) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/postprocess.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/postprocess.js
 /**
 * @import {Event} from 'micromark-util-types'
 */
@@ -22735,7 +22749,7 @@ function postprocess(events) {
 	return events;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/preprocess.js
+//#region node_modules/.pnpm/micromark@4.0.2_supports-color@7.2.0/node_modules/micromark/lib/preprocess.js
 /**
 * @import {Chunk, Code, Encoding, Value} from 'micromark-util-types'
 */
@@ -22836,7 +22850,7 @@ function preprocess() {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/micromark-util-decode-string@2.0.1/node_modules/micromark-util-decode-string/index.js
+//#region node_modules/.pnpm/micromark-util-decode-string@2.0.1/node_modules/micromark-util-decode-string/index.js
 var characterEscapeOrReference = /\\([!-/:-@[-`{-~])|&(#(?:\d{1,7}|x[\da-f]{1,6})|[\da-z]{1,31});/gi;
 /**
 * Decode markdown strings (which occur in places such as fenced code info
@@ -22873,7 +22887,7 @@ function decode($0, $1, $2) {
 	return decodeNamedCharacterReference($2) || $0;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/unist-util-stringify-position@4.0.0/node_modules/unist-util-stringify-position/lib/index.js
+//#region node_modules/.pnpm/unist-util-stringify-position@4.0.0/node_modules/unist-util-stringify-position/lib/index.js
 /**
 * @typedef {import('unist').Node} Node
 * @typedef {import('unist').Point} Point
@@ -22937,7 +22951,7 @@ function index(value) {
 	return value && typeof value === "number" ? value : 1;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-from-markdown@2.0.3_supports-color@7.2.0/node_modules/mdast-util-from-markdown/lib/index.js
+//#region node_modules/.pnpm/mdast-util-from-markdown@2.0.3_supports-color@7.2.0/node_modules/mdast-util-from-markdown/lib/index.js
 /**
 * @import {
 *   Break,
@@ -23907,7 +23921,7 @@ function defaultOnError(left, right) {
 	}) + ") is still open");
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/zwitch@2.0.4/node_modules/zwitch/index.js
+//#region node_modules/.pnpm/zwitch@2.0.4/node_modules/zwitch/index.js
 /**
 * @callback Handler
 *   Handle a value, with a certain ID field set to a certain value.
@@ -24012,7 +24026,7 @@ function zwitch(key, options) {
 	return one;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/configure.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/configure.js
 /**
 * @import {Options, State} from './types.js'
 */
@@ -24060,7 +24074,7 @@ function map$2(left, right) {
 	if (right) Object.assign(left, right);
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/blockquote.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/blockquote.js
 /**
 * @import {Blockquote, Parents} from 'mdast'
 * @import {Info, Map, State} from 'mdast-util-to-markdown'
@@ -24086,7 +24100,7 @@ function map$1(line, _, blank) {
 	return ">" + (blank ? "" : " ") + line;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/pattern-in-scope.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/pattern-in-scope.js
 /**
 * @import {ConstructName, Unsafe} from 'mdast-util-to-markdown'
 */
@@ -24112,7 +24126,7 @@ function listInScope(stack, list, none) {
 	return false;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/break.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/break.js
 /**
 * @import {Break, Parents} from 'mdast'
 * @import {Info, State} from 'mdast-util-to-markdown'
@@ -24130,7 +24144,7 @@ function hardBreak(_, _1, state, info) {
 	return "\\\n";
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/longest-streak@3.1.0/node_modules/longest-streak/index.js
+//#region node_modules/.pnpm/longest-streak@3.1.0/node_modules/longest-streak/index.js
 /**
 * Get the count of the longest repeating streak of `substring` in `value`.
 *
@@ -24158,7 +24172,7 @@ function longestStreak(value, substring) {
 	return max;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/format-code-as-indented.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/format-code-as-indented.js
 /**
 * @import {State} from 'mdast-util-to-markdown'
 * @import {Code} from 'mdast'
@@ -24172,7 +24186,7 @@ function formatCodeAsIndented(node, state) {
 	return Boolean(state.options.fences === false && node.value && !node.lang && /[^ \r\n]/.test(node.value) && !/^[\t ]*(?:[\r\n]|$)|(?:^|[\r\n])[\t ]*$/.test(node.value));
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-fence.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-fence.js
 /**
 * @import {Options, State} from 'mdast-util-to-markdown'
 */
@@ -24186,7 +24200,7 @@ function checkFence(state) {
 	return marker;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/code.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/code.js
 /**
 * @import {Info, Map, State} from 'mdast-util-to-markdown'
 * @import {Code, Parents} from 'mdast'
@@ -24244,7 +24258,7 @@ function map(line, _, blank) {
 	return (blank ? "" : "    ") + line;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-quote.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-quote.js
 /**
 * @import {Options, State} from 'mdast-util-to-markdown'
 */
@@ -24258,7 +24272,7 @@ function checkQuote(state) {
 	return marker;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/definition.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/definition.js
 /**
 * @import {Info, State} from 'mdast-util-to-markdown'
 * @import {Definition, Parents} from 'mdast'
@@ -24317,7 +24331,7 @@ function definition(node, _, state, info) {
 	return value;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-emphasis.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-emphasis.js
 /**
 * @import {Options, State} from 'mdast-util-to-markdown'
 */
@@ -24331,7 +24345,7 @@ function checkEmphasis(state) {
 	return marker;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/encode-character-reference.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/encode-character-reference.js
 /**
 * Encode a code point as a character reference.
 *
@@ -24344,7 +24358,7 @@ function encodeCharacterReference(code) {
 	return "&#x" + code.toString(16).toUpperCase() + ";";
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/encode-info.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/encode-info.js
 /**
 * @import {EncodeSides} from '../types.js'
 */
@@ -24416,7 +24430,7 @@ function encodeInfo(outside, inside, marker) {
 	};
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/emphasis.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/emphasis.js
 /**
 * @import {Info, State} from 'mdast-util-to-markdown'
 * @import {Emphasis, Parents} from 'mdast'
@@ -24463,7 +24477,7 @@ function emphasisPeek(_, _1, state) {
 	return state.options.emphasis || "*";
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/unist-util-is@6.0.1/node_modules/unist-util-is/lib/index.js
+//#region node_modules/.pnpm/unist-util-is@6.0.1/node_modules/unist-util-is/lib/index.js
 /**
 * Generate an assertion from a test.
 *
@@ -24577,7 +24591,7 @@ function looksLikeANode(value) {
 	return value !== null && typeof value === "object" && "type" in value;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/unist-util-visit-parents@6.0.2/node_modules/unist-util-visit-parents/lib/color.js
+//#region node_modules/.pnpm/unist-util-visit-parents@6.0.2/node_modules/unist-util-visit-parents/lib/color.js
 /**
 * @param {string} d
 * @returns {string}
@@ -24586,7 +24600,7 @@ function color(d) {
 	return d;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/unist-util-visit-parents@6.0.2/node_modules/unist-util-visit-parents/lib/index.js
+//#region node_modules/.pnpm/unist-util-visit-parents@6.0.2/node_modules/unist-util-visit-parents/lib/index.js
 /**
 * @import {Node as UnistNode, Parent as UnistParent} from 'unist'
 */
@@ -24907,7 +24921,7 @@ function toResult(value) {
 	return value === null || value === void 0 ? empty : [value];
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.js
+//#region node_modules/.pnpm/unist-util-visit@5.1.0/node_modules/unist-util-visit/lib/index.js
 /**
 * @import {Node as UnistNode, Parent as UnistParent} from 'unist'
 * @import {VisitorResult} from 'unist-util-visit-parents'
@@ -25192,7 +25206,7 @@ function visit(tree, testOrVisitor, visitorOrReverse, maybeReverse) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/format-heading-as-setext.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/format-heading-as-setext.js
 /**
 * @import {State} from 'mdast-util-to-markdown'
 * @import {Heading} from 'mdast'
@@ -25213,7 +25227,7 @@ function formatHeadingAsSetext(node, state) {
 	return Boolean((!node.depth || node.depth < 3) && toString(node) && (state.options.setext || literalWithBreak));
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/heading.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/heading.js
 /**
 * @import {Info, State} from 'mdast-util-to-markdown'
 * @import {Heading, Parents} from 'mdast'
@@ -25257,7 +25271,7 @@ function heading(node, _, state, info) {
 	return value;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/html.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/html.js
 /**
 * @import {Html} from 'mdast'
 */
@@ -25276,7 +25290,7 @@ function htmlPeek() {
 	return "<";
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/image.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/image.js
 /**
 * @import {Info, State} from 'mdast-util-to-markdown'
 * @import {Image, Parents} from 'mdast'
@@ -25343,7 +25357,7 @@ function imagePeek() {
 	return "!";
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/image-reference.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/image-reference.js
 /**
 * @import {Info, State} from 'mdast-util-to-markdown'
 * @import {ImageReference, Parents} from 'mdast'
@@ -25392,7 +25406,7 @@ function imageReferencePeek() {
 	return "!";
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/inline-code.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/inline-code.js
 /**
 * @import {State} from 'mdast-util-to-markdown'
 * @import {InlineCode, Parents} from 'mdast'
@@ -25431,7 +25445,7 @@ function inlineCodePeek() {
 	return "`";
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/format-link-as-autolink.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/format-link-as-autolink.js
 /**
 * @import {State} from 'mdast-util-to-markdown'
 * @import {Link} from 'mdast'
@@ -25446,7 +25460,7 @@ function formatLinkAsAutolink(node, state) {
 	return Boolean(!state.options.resourceLink && node.url && !node.title && node.children && node.children.length === 1 && node.children[0].type === "text" && (raw === node.url || "mailto:" + raw === node.url) && /^[a-z][a-z+.-]+:/i.test(node.url) && !/[\0- <>\u007F]/.test(node.url));
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/link.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/link.js
 /**
 * @import {Info, State} from 'mdast-util-to-markdown'
 * @import {Link, Parents} from 'mdast'
@@ -25536,7 +25550,7 @@ function linkPeek(node, _, state) {
 	return formatLinkAsAutolink(node, state) ? "<" : "[";
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/link-reference.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/link-reference.js
 /**
 * @import {Info, State} from 'mdast-util-to-markdown'
 * @import {LinkReference, Parents} from 'mdast'
@@ -25585,7 +25599,7 @@ function linkReferencePeek() {
 	return "[";
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-bullet.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-bullet.js
 /**
 * @import {Options, State} from 'mdast-util-to-markdown'
 */
@@ -25599,7 +25613,7 @@ function checkBullet(state) {
 	return marker;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-bullet-other.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-bullet-other.js
 /**
 * @import {Options, State} from 'mdast-util-to-markdown'
 */
@@ -25616,7 +25630,7 @@ function checkBulletOther(state) {
 	return bulletOther;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-bullet-ordered.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-bullet-ordered.js
 /**
 * @import {Options, State} from 'mdast-util-to-markdown'
 */
@@ -25630,7 +25644,7 @@ function checkBulletOrdered(state) {
 	return marker;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-rule.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-rule.js
 /**
 * @import {Options, State} from 'mdast-util-to-markdown'
 */
@@ -25644,7 +25658,7 @@ function checkRule(state) {
 	return marker;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/list.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/list.js
 /**
 * @import {Info, State} from 'mdast-util-to-markdown'
 * @import {List, Parents} from 'mdast'
@@ -25687,7 +25701,7 @@ function list(node, parent, state, info) {
 	return value;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-list-item-indent.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-list-item-indent.js
 /**
 * @import {Options, State} from 'mdast-util-to-markdown'
 */
@@ -25701,7 +25715,7 @@ function checkListItemIndent(state) {
 	return style;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/list-item.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/list-item.js
 /**
 * @import {Info, Map, State} from 'mdast-util-to-markdown'
 * @import {ListItem, Parents} from 'mdast'
@@ -25733,7 +25747,7 @@ function listItem(node, parent, state, info) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/paragraph.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/paragraph.js
 /**
 * @import {Info, State} from 'mdast-util-to-markdown'
 * @import {Paragraph, Parents} from 'mdast'
@@ -25754,7 +25768,7 @@ function paragraph(node, _, state, info) {
 	return value;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-phrasing@4.1.0/node_modules/mdast-util-phrasing/lib/index.js
+//#region node_modules/.pnpm/mdast-util-phrasing@4.1.0/node_modules/mdast-util-phrasing/lib/index.js
 /**
 * @typedef {import('mdast').Html} Html
 * @typedef {import('mdast').PhrasingContent} PhrasingContent
@@ -25788,7 +25802,7 @@ var phrasing = convert([
 	"textDirective"
 ]);
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/root.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/root.js
 /**
 * @import {Info, State} from 'mdast-util-to-markdown'
 * @import {Parents, Root} from 'mdast'
@@ -25806,7 +25820,7 @@ function root(node, _, state, info) {
 	}) ? state.containerPhrasing : state.containerFlow).call(state, node, info);
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-strong.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-strong.js
 /**
 * @import {Options, State} from 'mdast-util-to-markdown'
 */
@@ -25820,7 +25834,7 @@ function checkStrong(state) {
 	return marker;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/strong.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/strong.js
 /**
 * @import {Info, State} from 'mdast-util-to-markdown'
 * @import {Parents, Strong} from 'mdast'
@@ -25867,7 +25881,7 @@ function strongPeek(_, _1, state) {
 	return state.options.strong || "*";
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/text.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/text.js
 /**
 * @import {Info, State} from 'mdast-util-to-markdown'
 * @import {Parents, Text} from 'mdast'
@@ -25883,7 +25897,7 @@ function text(node, _, state, info) {
 	return state.safe(node.value, info);
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-rule-repetition.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/check-rule-repetition.js
 /**
 * @import {Options, State} from 'mdast-util-to-markdown'
 */
@@ -25897,7 +25911,7 @@ function checkRuleRepetition(state) {
 	return repetition;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/thematic-break.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/thematic-break.js
 /**
 * @import {State} from 'mdast-util-to-markdown'
 * @import {Parents, ThematicBreak} from 'mdast'
@@ -25913,7 +25927,7 @@ function thematicBreak(_, _1, state) {
 	return state.options.ruleSpaces ? value.slice(0, -1) : value;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/index.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/handle/index.js
 /**
 * Default (CommonMark) handlers.
 */
@@ -25940,7 +25954,7 @@ var handle = {
 	thematicBreak
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/join.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/join.js
 /**
 * @import {Join} from 'mdast-util-to-markdown'
 */
@@ -25955,7 +25969,7 @@ function joinDefaults(left, right, parent, state) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/unsafe.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/unsafe.js
 /**
 * @import {ConstructName, Unsafe} from 'mdast-util-to-markdown'
 */
@@ -26177,7 +26191,7 @@ var unsafe = [
 	}
 ];
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/association.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/association.js
 /**
 * @import {AssociationId} from '../types.js'
 */
@@ -26206,7 +26220,7 @@ function association(node) {
 	return decodeString(node.identifier);
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/compile-pattern.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/compile-pattern.js
 /**
 * @import {CompilePattern} from '../types.js'
 */
@@ -26221,7 +26235,7 @@ function compilePattern(pattern) {
 	return pattern._compiled;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/container-phrasing.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/container-phrasing.js
 /**
 * @import {Handle, Info, State} from 'mdast-util-to-markdown'
 * @import {PhrasingParents} from '../types.js'
@@ -26294,7 +26308,7 @@ function containerPhrasing(parent, state, info) {
 	return results.join("");
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/container-flow.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/container-flow.js
 /**
 * @import {State} from 'mdast-util-to-markdown'
 * @import {FlowChildren, FlowParents, TrackFields} from '../types.js'
@@ -26349,7 +26363,7 @@ function between(left, right, parent, state) {
 	return "\n\n";
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/indent-lines.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/indent-lines.js
 /**
 * @import {IndentLines} from '../types.js'
 */
@@ -26380,7 +26394,7 @@ function indentLines(value, map) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/safe.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/safe.js
 /**
 * @import {SafeConfig, State} from 'mdast-util-to-markdown'
 */
@@ -26493,7 +26507,7 @@ function escapeBackslashes(value, after) {
 	return results.join("");
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/track.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/util/track.js
 /**
 * @import {CreateTracker, TrackCurrent, TrackMove, TrackShift} from '../types.js'
 */
@@ -26551,7 +26565,7 @@ function track(config) {
 	}
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/index.js
+//#region node_modules/.pnpm/mdast-util-to-markdown@2.1.2/node_modules/mdast-util-to-markdown/lib/index.js
 /**
 * @import {Info, Join, Options, SafeConfig, State} from 'mdast-util-to-markdown'
 * @import {Nodes} from 'mdast'
@@ -26699,7 +26713,7 @@ function safeBound(value, config) {
 	return safe(this, value, config);
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/common/unicode.js
+//#region node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/common/unicode.js
 var UNDEFINED_CODE_POINTS = /* @__PURE__ */ new Set([
 	65534,
 	65535,
@@ -26789,7 +26803,7 @@ function isUndefinedCodePoint(cp) {
 	return cp >= 64976 && cp <= 65007 || UNDEFINED_CODE_POINTS.has(cp);
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/common/error-codes.js
+//#region node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/common/error-codes.js
 var ERR;
 (function(ERR) {
 	ERR["controlCharacterInInputStream"] = "control-character-in-input-stream";
@@ -26854,7 +26868,7 @@ var ERR;
 	ERR["eofInElementThatCanContainOnlyText"] = "eof-in-element-that-can-contain-only-text";
 })(ERR || (ERR = {}));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/tokenizer/preprocessor.js
+//#region node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/tokenizer/preprocessor.js
 var DEFAULT_BUFFER_WATERLINE = 65536;
 var Preprocessor = class {
 	constructor(handler) {
@@ -27005,7 +27019,7 @@ var Preprocessor = class {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/common/token.js
+//#region node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/common/token.js
 var TokenType;
 (function(TokenType) {
 	TokenType[TokenType["CHARACTER"] = 0] = "CHARACTER";
@@ -27023,7 +27037,7 @@ function getTokenAttr(token, attrName) {
 	return null;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/entities@8.1.0/node_modules/entities/dist/decode-codepoint.js
+//#region node_modules/.pnpm/entities@8.1.0/node_modules/entities/dist/decode-codepoint.js
 /**
 * C1 Unicode control character reference replacements (code points 128–159).
 * Index i gives the replacement for code point 128+i; 0 means "no replacement".
@@ -27092,7 +27106,7 @@ function replaceCodePointXML(codePoint) {
 	return isInvalidCodePoint(codePoint) ? 65533 : codePoint;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/entities@8.1.0/node_modules/entities/dist/internal/decode-shared.js
+//#region node_modules/.pnpm/entities@8.1.0/node_modules/entities/dist/internal/decode-shared.js
 var BASE91_INVERSE = /* #__PURE__ */ (() => {
 	const table = /* @__PURE__ */ new Uint8Array(127);
 	let code = 0;
@@ -27235,11 +27249,11 @@ function decodeTrieDict(input, resultLength, atomCount, dict1AtomCount, ngramCou
 	return out;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/entities@8.1.0/node_modules/entities/dist/generated/decode-data-html.js
+//#region node_modules/.pnpm/entities@8.1.0/node_modules/entities/dist/generated/decode-data-html.js
 /** Packed HTML decode trie data. */
 var htmlDecodeTree = /* #__PURE__ */ decodeTrieDict("!}.&u%}'&}*'~!6*)%&,~!J~!J~%L~y<~!R,~~%Lu~~#GD~~#|)1#%}^%}2%+#.##%##%}&%##%'#%##&%#%#'%#&#%#&#'#%%#&#%##%#)%''%&%#%#'%#%%#%%}%%%#%#&(23#%%#&-%0%('1#(##%#'##+%'*.:1}#%#6-+(%'%%#%%%}#L'2351&('%}&/N'(0(/*-%(%%}#'+&T%7.2}#&%&#%#36/5##%&%%#&#%%#))2%%##%&&'0~!#*+&'%1~!%).'3q?&%'1~!.##%6(~!+%%%(Gw'rT~!E#<nA%#jZ~!H%(~!42##~!*31&~!G%U~#)5~#`3~!J~!Z~%]~%Y~%C~!q~!u~#kz~%#~!6'~!D~!U~!?~#T~!c%~!G#'~%7|~!G~!J~!G&~#pb~(Df}#%}*&}#%##%##%##&#-}&'#'&%#.++}%mI,#,@&(}*%}*'%&##&#%##%}&0}#.},U},%}+%}&%}#%##&}B%(}(%}+%)})%##%#&}&%##%&}<%}>%#%&}*%}(%}9%}/%})%}*%}*%}?&}&%}3%}&*#%})%#%#)}#&#-#+*%E%%'%'#%}#*V##&##I}#&&##%&%#&&Qf%%))w/0+&%#(#.%-''''++++7}>%4'',##1,#%#&%##&#'##&#*#9)%&%}#*}%,#+P(%A&%#'&##wSD',9E00#y#@}(+}&%&>~!#~!X}#*}(&&}(&}(,%}%&#+&}#&}I%#%}%)#(},'%#*}4%%#%}(''}#/##(##),%-##%%)#&}(.}&%#&}%%}*&#%},&&}&%}#%*'#%})%}D&}&%}-&}6&#&}-,%}#%})-(~+`~,=?~I9'9%~!,#%})%})%}@%}?%}(~!?~#<~#pP~#BG~#=1#%K+~#?#~%;)~#A~#mF1~#A'~'X%'~#lR~#N~'N~#r~#m#-~#i'?%#'%~#B%##%,%#~#_%#0%~#]732~,w~2+#:&#%&'0%&>%}#>##F+)#%&&#(+_}4&}-%}(&}@&}O7Fdf0@+/v4}&WU##&/0#&'('B#%}.%}'+#%}#%%&#&%#%##+#&#)#6#'#.},%}c%},%#%##%&#&%#&~#>'*-.%##%##%}#%%}%'~#)D1}#%*&~#_%%'(~#S2%'.}#~#=##*'*-%}&'%'##&&~'E%.#&~#M4}%%##&'%#~#O1##%&#'+~#<B%##%%'%+~#;#@%}#&%#&&%#(~#H1}'%'##&&~#?A}&'~#D#%32}'&&&&~#[}'(#%}'~#;C})&}%%#%~#=&%,3}%'(#%%~#^'#&&)#%'~#Y%-~#d-%'~#^%%&#&&&}#~#b~2t*&'~&(~&@~0%~e~3}%*''0})&}+~!9##-}#%-hD*)1fC#%/&/fB#40~!+#)*4~!+~!K'&:~!/*7~!.#~!H~!L':~%x&~!H#~!*~%1~!I#~!+A~#p'~!F~~#-#~,,(~.Z~!V~%;'B'mq-W~!N~%I%#&&#&}#%},%%}'%}+X#%}#&}(%}'%}<%}#%}%%'}'%}:~![)9@~%>~#UA%-%##&~!C%~!-.9:~!1~!-^2/:a~!y,D*J#-5)/4~%23,~#G~!L1~!0X3`~!2+~!!0-~&E~!W~!o,>Y&]~%cZx_&~#O*9#A#'#+I'%#)~!0B*-5A+-((F&*M#)(-7-5+'-3a5Vi~!Y~!?+[)%3),ERHm~!+:D,VG.+)?fB%%*(%)'(#&80%1'8`K8?`+'Z#&O&'H5#*9)A%%5&3))0%39+.*7#()&&*=4@**L)<'_&*+..;(#*+)./&0#3)%')-8(4ixD(&.}%,('aI:,)%,k2231T)I'#/-W7,/'Q#.'Y24+h')37</31&83##&0#),H(?'&?/1##%#&&#%''-%&&&#(&''&#.-'%#%%(,')*'&#&#'##%(%(#%('#&##%%%%('%#%#%%#%#&%##h>w+v<ayvyvcg.uuhKr}g/v|g>u9i[~>g5uI~=RvdwEg;v/g;uk!!TTSx]@RT!U!#!@VBRUU!'UTe-d0c`e&gSdicedFcrdTaqb.kYcAohdYd@a3e+d}dMdtd.aJ#bqcK`dle/e.e'dwdPdodddjbEb}ogd^ofdpduc6j?l%d{drdqc)d7bacOdQ%T#Y)X.sR[yH>6Vyv3[xwLu>vo'!*.[yBacahoj>6Rew3[xqdZa#!a&#^(X-[yG>6Vyu3[xvg3sEr|g.u/Ri9db0T#^(Xa)!-[y;>6Vylg4wKs{JwNZt3@3r=c4Z([xlg;wKt!cpq's@v7A'*a(a+!-a#[y<3Dt?3Dt'>6Vym3[xmg9rxsNJwLZt4~?r?db1T#`-!(Xa,!0[yS>6Vz%NuQs.g4wKtnJwNZtS@3r>c4Z([y%g;wKtrdga8!a(!#&T*Y-Xa#!a0<or[yc3Dtq>6Vz43[y3JwNZtf@3s!Ju}!%Dti:pm3c_%X#tjB5pkd6q!r]u?voC'*-a.a2!0a&a+[yI3DtI3Ds~3DtH>6Vyw3[xx;:s#~<5pKJwNZtE@3r~d`a)!a2T#a.(!+U.X1[yT3Dt`3Dtv>6Vz&3[y&g9rxwzcxstPu.<rAJwLZtT~?r@dZa%!a.&^*Za(/Reu[ya>6Vz23[y1g3sEr}wkg{NuQRg{ci(U#5@b`~,cg#U(2WnH5wugcRh7dX#T(Y,a'Ta!!a,[yZ<]mj>6Vz,3[y+Pv#5ReZKu+=,%!H}7ABwkaS?Rh:BcW(X#<]mrj:ubv/ARekdg%!(!a.*Ta(Y.X1!#sP>Rl*Dt6[y>>6Vyo3Wf*jOvuumvuRgRJuq*!:9<B@bX~3jVv&v@s@5Re[d/rQt{uAvo&a&a*)a2!,0Wf!3Dt0=Bs'>6Re}3[xy~<5s%JwJZt1~Gs)c;&!#2sJkNuXvzq7rxu,Re8dka4!a8(aEZ+a@Y.X1Xa)[yd=Bs(3DtP>6Vz53[y4cX#X&Re:avRe9~<5s&JwJZtQ~Gs*i^rzvdRg+Jv{%!2sbB@bX}kdga,!Za?&^*T1/!a'Dt+[y6>6Vyf3Wf%g/u;s4hGu6?Rh-JvZ,!c%#&RoX54Rivj7uyvf8RgTKvZB%*!2sGh<vu5Rgq<=C::9bb~#dZ#T&Ta6Y.X*Dt>[y93Wf)coZ(T,6VyifluvRgC@95@B@bX~/hFu34cC#T,k/unq8w8Q5RkUklwQuzunq8w8Q5Rk8d/rJu?v8w9)-&!a0a;a&aIWejg3sEr/h1s<DtDJvyZqY5aws3Jvy!&Wei~Hr1:au5@Bag>23E~5c:Z&bX};kKv?w&unuVu5Rjc;>bs)#~@:Rh.=ay<a]C;b`}Vd6s/t{uAvoaxa()!a,a7%-a#a2Dt,[yF2Wo[>6Vyt3[xuNuPRi&NuPwpi#RoWh?vf8Ri%Jv]!%Ri:KvxD!.'2WeAjZu`q9rxu,Re7woeAg-unLq(qA_/*2Wg_g3u5q^9:4E}/jTrxrzv=Wkkd~0UX#^^Xa-a1a5T&a=U1a'*aEa]!a*aPaA-adok[y54Rn>;:p3~Dp5g9rpsFNvZqjg3uJp4~<5p0Pw;5qlJwNZt*@3p1Pw:5p/Ou!5p2JvG'!6Vye=<qnJvh_[xhg3v,Rh3kOwOw-sDuev/Re^dha[a%!%!a+#Ta7)-5TaCaO!aka!a)sf[yb2>Rl!9ARiq5E}Qg=ucRkBE|oJrJ_@Wk~@Wk{JrJ_@Wk|@WkyJrJ_@Wk}@WkzJvO_[y2g-vMRmiKuYC!)&>Ri;>Ri<@3RkNc](X#@9Rk=g5vuRmhKvDB!+'=]meg3u4Rmgd)#Y'Vz3CARmfd`a+!%T'!+#Ta1Ta6TaM-sTDt9[yA9sYd'%Y#s[[xpj:ueunaXRgEjRq,v-vuqdd2'`#6Rev<32@5>:2<E}5xIo9a*X#Y(;5RePJvD_g>vyRgNj8w)v8<wggs:RgXiZt|vjx,hSq3ah!-(~@:Ro/Ou!5RhWj^v(pyw8unRhUdx-UY#^Ua.a3a70!)%UX1TaDa)'omRiRRhE[y:3Dsz=Br,>6Vyj3[xkg6ruwjcqsrPw;5r*Ku]D'Zt-@3r(~?r.i[vwv]dU1a--U#`a4(g/vsRhPOu!5RhLj:rmu9Wo!~@:wdh@g/vsRiTjXuvvNr}:RhBj^v(pyw8unRn]dz1UYa'a+^Y(!aETZalaRY.Ta?a4[yDJw1!#qLsW>6Vyrfzq-pLflpwRe|Js>%!Dt@3Dt&Jvy_[xs~HrnjMuwpsw'RecKu+D#'!t<~Grl~?rjg5u-x,gwp{ah!-(~@:Rg~Ou!5Rh'jXuvvNr}:Rh#cW#X/c;&!#2sLi[v7u7RgpJv)(!iLrxu,Re6j7v@s@5Se[e7d`aW!Za(a`T.a#!a3!&aDa-!9)Dt_=6s+3[x~~DR|h~DS6avhGun5RkZj3w)v-]mkKunB!&*]kb97R|i<ARk<c:Z(6Vy}Juh'!wziMRoS:F|vkLuauJv5vtvQRh1d='T+Y#VyO~DR|jcF#T'7R|g97R|kJv3'!ay<Rj,Jvh&!:ReXcsa6*a+#a#_aIRf9aLRf?c,Z&Rf5Rf7c.Z&Rf;Rf>cQ#%T'p-Rf8Rf=ct#%'(*!,p,Rf4p+Rf6Rf:Rf<d~'Ua%U*^UYa(!a,-!#a4YaTalaEX0a8a<Weo3Dt/3Dsx=Br93Wen~Dr;~<5p<JwNZt2@3p=Pw:5p;Ou!5r3c7&!#:p>3Ds}KvGB)_6Vyk2sM=<r7x'eovA(!hFu1ARf}cV#X&@r5j6rvwQa^Rf3c=Za'wkghJv__g;unRggA53B9=b^}%j6uduo5Jq;!(hIv%2Re`Ou4ARe_e%a#^^^Xa&!a*a2!&a6YaP!*ad!#a:aE/5Rn?[y@>6Vyp;:pE~DrY~<5pBJwNZt8@3pCh=rt3rWPw:5pAJup_[xoNuPpF9c!#'45pD5ARn)d8#X'X*3@rU72s]h>v<<sSjJpqvewOJq/(!hNw'5ReBk0s2u3w/w'5ReE5@Jq.!a+JQ!&WeU23d(#Y&RjG5]jBk!u7w&u0udARjEe#+^^^Ub#!a2/a`Z(agT1!a-a;|@TaG!aS[yV=Re~fow'RguNuPRe?bz#'>RoUWeL>:Cbb|?JwPZtVg6ruRmzJvD'!6Vz(g/vmRh~Jvy_[y(g9voRgyx*cy(#2>Ri2B9b]~9kIw9u7rluJu3Rg]dI#a%UY'@=p%CAx.gQZ&RhwwygtRm{x5g_Z'+ABqR9Woa=Bp&dV#^*Xa'!&@o{g4v]Rk;Jv{!%Rk[wkkiA5RkiwwfUB=x,fUuqC&*!>RfTg8v0RfV~ARfSd;rJsAuAv9wR'ae+/aO!a@aza/a#[yQ@Wg!2Wemg3sEr0JvB_g>uvReWg2v+Re=KupB_+[y!2AbY~-~Hr2AJwD!(h<~El>h<~El?Kun@+_:9b`}Kg-v/Ri3g;vtwyk_9]k_d=&T#*U.6qh@Ab`|K9:H|CJv[!&3Dtex'fDwC%!Rf[9WlMd[(^X,!a%Z06Vz!@WgBg=v~Rgvg,QRe@awd,#Y+jTv|Q~EfWj]uNr|~FRfXdy#Y&^Ua%!aO.!(a)Ua;=!a@aKap!a-,a!Ta]a[rSa]p?[y82sK=Bq~;:p:~<5p8Pw:5p7d'#Y'Wf(;RnRi[u4w&RgJJvG'!6Vyh=<r#ijuuv/sIKuYD'ZtG@3p9~Gr&d2#`(g<vtRgFj`u5w&rqpxRf2CJuY!+:wfnTOu!5Rg}jNs1ucv&RfwJvA!&3@q|BDcC#T,k/unq8w8Q5RkTklwQuzunq8w8Q5Rk9dga#!a'!a=#a0!:+Tb*b@aO.a4!aba8aFJv^}?!VyR~Dr<g;u%Rn.~<5p[x'e`wNZtR@3p]Pw:5pZhNvjBp.woe_g5u-r4JwF!%DtO3:ooc7&!#:p^3DtpLuGw(!+%)Dtk6Vz#2sd=<r8d'#Y([y#<x3gJt`w@!)%}MRiowzikRij=]ilxAf3,U(#B2Rf#g0v-Rm[ck{`U#]giKv3>)!&6Ri154s,KuGB_%@r68r:dJ|t`#X(9<E|u2@H|rx3gJu?w'!+'1Nu7Reg4=H~+9<wxgY95Rm]xLggZ-`(X}U2:Ri4h<uOawRmsJv__5@bb{jbV~3dka#a'a]!,#a+U=a>b6a3b%!/aKa/)!arwve^VyJ;:pR~DpTg3uJpS~<5pOPw;5qmPw:5pNOu!5pQJvG'!6Vyx=<qoJvA!{~Jup!%@qk7Rn/KvyD!}''[xz;>wkh'?Rh,x8gyt`w5D!&),(SgyccRgztJ@3pPB5p#d'(Y#<]mmifubw&RgoJvE&!82s^JvF&!8Rf,ADb]~;x=h'rNu]vK!,%'*0RnORh)4Rh*AqQg-vaRnNg;wHwkh'ba~4cE#Ta*x3gctyw@'!+%RnFRnD<4Rn@hFvK5RnCxWg[#`&a0Ua()`1Rm75Rg[c]%X#qi8Rg^NvdRj>BwzgZauwji7Rm6A4wgg]d1#&(*,.0a#Rm;Rm<Rm=Rm>Rm?Rm@RmARmBe%#^^^Xaea?aC/b+(,!a+a#!a/!>a&Ta<aKbD!2wphBRnk[yPw}hE|.=Br-3Dtm>6Vy~g6urRf.x,hPrNav!%'RnqRo%Ro#Nu;q[Pw;5r+JwNZtM@3r)d'#Y'Weh;xChL#`&RnmRnoKu}>%(!Rne~Bs-;2wjcussJv+'!aYSO}6@B<5?ba~8LrNvj!.%*ROwungw~ng~:9;Ri^>wtnig;wHRnixDh@|(UZ.x1h@|)!#:2<H|*xHn]#-UX'3Ro)z=iT}6ARns=Bwsn_wpnaRncw]aR(#UXa&Ua*a/=]iPd'#Y&Ro'WnXf{QRm2hNvj]nZd`'T~&1`{|`#9b]{}c:'!#Wl{>@=be}]?cl{{U#:5Abb}Jds#^YaF!a*b4a#a3aPa>&Tb!bH!*a_!Eau?/a&RjY<]gj>6Vz*;:pe~DrZg,QRj1JwNZtX@wihspcJvZ&!VyX9WmOJu|!|N2WmHJvh&!]ht~Bpbcn&T(!#RmQ<s7Nu;padH#X'`+WmJ@>RmKCARhnKup=!)&Wf+:RhqNuPpf9c!#'45pd5AwghpARn(Ls@w!%,)!RmP@Wfe<E|IJva!&WmNg8vsRmLd`*.`#Y'Xa!axRn*]hrA8Rhug5s@rXg8u!RmMd8#X'X*3@rV72smdI*#UY&RmICARho~GsgxVgd)Ta'U-Y&Xa!T#RnEWnA@Wffg1uDRi0hFvK5RnBxGnG&#`%owp)@wsf+bX}Ze-*1!a*^^^Ua|!#a.aq&Ya2!a>.a6!a:aO`aJDtL[y`@Wg#>6Vz12@wzoYRoZNuPRi!NuPRhzg=ucRi,@=b`{Yg=ucRi-ACJvB!&Sh[ebSh]ebi`wUuFRm4Jw2_[y0JvB!.<Ju(!&SoG}6Shd}6<Ju(!&SoH}6She}6Kur@._g5vHRieJvx!{L2G{Kx6gd'T#?Rh82Wi5cZ#X(g1w)Rm5dW-Y(Ta#!a)!#aYa=wnfE=su2>>bU{0j9udv:<svj8uQv-7RgHdE%#^'sq9sp=>Bb_{TJv`!&g/r|snj6v(us5d,#Y(56H}[978H}]Jw5!&g1rushJvB!+j;v{u5?zDhd}6}bj;v{u5?zDhe}6}ce*#`(^^^a[aea!=!a6a*aoXb1a.!aAbL!b>,b'aL!aV@Wf|2Wlg3[y/JwNZt^@3piPw:5pgJunZou3@rsJva&!Vy_g<v~Rm#JvG'!6Vz0=<r{Ju{%!:pj@WfsiXuJu3Rm:JvZ&!WfA~Bph@c4Z&Dtwax5rubx(#:awRk1@d,#Y&RfjRfid1#,Y(@Wfp2Wlrg5s@ryKu[@!,'=]ig9wlk?Rk>g5u-rqJvy'!@9RkQcH(T#=>Ri~@<wkj(Wj(KuZB*!&<7rw@9RkRcH(T#=>Ri}@<wkj)Wj)dg(Ta2Xa9X#`-!a*CARhg@@=I}d9x;c~#X%so=<sj>2@@=aybb}XjWv0Q~EfEj3vLv;<d,#Y(56H}`978H}_dgaPaFa'a/!#a3Y0a_a;a|!1(a7-[yE3[xt;:pJNvZrrg3uJrvJwNZt=@3pIh=rt3rxPw:5pGOu!5rpJvG'!6Vys=<rz@c4Z&Dt(ax5rtJvZ!&~BpH@wsfNg-vaRlNci*U#=<wei<F}a5@Jq.!a*JQ!%@qZ23d(#Y&RjH5]jCk!u7w&u0udARjFd/prq=tyvpaEa(a:.!a1aZ(@@=I}:9wpd%=<sX55w_h}@@=I{t=ay<aU@@=I}T=ay<2@@=I})?C9:9au@9Cb]}DP~=x-fAZ(2Wl1=ay<aU@@=I}>5@d##Y+jTv|vV~EfFj]uNpn~FRfGdgaK!Z2&!a8a-Tb({E!acTbM*!a(DtY[yYd'%Y#sl[y*hHvh>Re5x2c{Z}.j4uCvcawRiMd+#X+_x&d!},<5RkX;2Hzw@x,gavfB-!{CcF&T#Roe;RodwWbBg5urRgaKvHC*_6Vz+<4opieuew&Rmq@d]&Y)X,T#X0Rh}<BqP=4qS9:ReMg/ujReNJw0!/<Jui%!bd{kawwnemRelAxUa?a3#*.&UX(Ya+a/RhvRnQ<o}9Wmtd-#Y&RgSRmw9;Rmxay=Rmyg-vaRmuxEhSrNu,v-voC!%(aR.a(a7+1Ro1>Ro5CE{A9b]{@;5x#eO{:g;urRi+KrNA!%(Ro3>Ro79;Ri_Ku@>{;&!x%gX|{KunA_+g5QRj/g3u5Rj#g>uERj%wio/xRhS&!,!#^1U}wba{8>>@=be}qC@:D5ba{7Ku+A&!}x?ba}t>>@=be}se(aA^^^Uat!b0#{pa+awUazbGa#aLb9bgaWac'a5TbS=Br!d1#`%scp_Jvl!#rT>Re0JvX&!VyN=H{Fcm#U&:pY=ReaJv2&!]h0=]nUJvG'!6Vy|=<r%JrM_=]h2@Wlud'#)U'Wf'b]{i=]h/Jvh!&~BpWg=v]RnMx+ny#'Nu;pVwjnu=]nwxJnx,T#`&Reqwjnt=]nvieu9vrRjLLuYwP(#+!th@wih5pX~Gr'g5v/Rh4KunA'!-CARnP@wwiN:Rm_9x'cvw>!|l=<saKvAA!0&3@q}>w^e1bp#&Re2Re3BDx7gH#T|f5H|eKuZ>!%(:qNAH{]Jv6!+3B2B9=b^{X<5<B92:E{ZLvhwA(a;a%!igQuyRmad+#Y}m@3Rh5d8#X'X*:AqUAHzmaxwbh<aXRnVcF}RT#Nw&cj#U(BWnug/vsRntdka)(a3+.Zb7aYYan1!bVa@Xa}[y^@b[{G=H{+hFu73Rj&Pv#5ReQcK%T#sig1v{Rj'Ku+D#'!t]~Grm~?rkKuMB!01d5#`'Vy.ta3Dtu~Hroc8#'{^45s85AwZbP&!#Rn!wghxWn#KvEA!)&2RlA2RlBx:h|#(T,=]j09Wobz>x]z/@awRoTd+#Y(az]hFhCrm4d,#Y+jTv|Q~EfMj]uNr|~FRfOdCa!Xa9_X#@<plJvf!%b`{(9;Rgwc;.!#2x7cw#T|UDb]|T5Ju={(!=@E{&Jv)&!Ab`{'awJvf!~*>>@=be{#KuY>!+&4Ezyi[ugv&RjIdea+T)#UXa&T-T&a!Rh9auRmW=]kLg5vuRn+g3u4Rn-Ow6ARn,hHus5xNk?#UX(U~)/g8v0RkD~AwkkF?Ri.OuNBwkkA?Ri/d|a2`a*^UYa.!aBTZaTa'Xa;!(!2!-a#b2[yC>6Vyq3[xr2Wi?g1rusVh%s?DtF~<5rbJs;%!DtBfswKtCj[uvuSsEu3RgVx3o:u+wN'*Zt;@3rd~Grh~?rfg8w)Lq)qE&-a%!>bI|`jWv0vV~EfCjTv|vV~Ef@j]uNpn~FRfBcK#T']gWNu7x,k7q4ai(0!hHv8<RhmkMu9vrsBuev/RhlCJvB!,g<v{wchh~@:Rhji[vrv{wchi~@:RhkdS&a5UY#Ta!RgPwwiI5BwciI~@:Rh`x'iJvj'!5]iJPu8Bwch]~@:Rhach)U#h3rp]gLh@t|Ax,hTq3ah!-(~@:Ro0Ou!5RhXj^v(pyw8unRhVd|)`,^UYas!a?/a2Z'a^Ta{Tb7Ta(a#!a,Wf&9sZ3DtAadamov=Bqt3[xig8vsRm~>waiL2b`{QJv*_Ouv2qgj<v]v2BqfdR'X*X#Y-@3qr~Gqv~?p6hHv-]glPup5Lq+q?_%*b_{qF{n9b^{rOu4ARhpKvCD!+&~Bqp:5Dbb}nwoiKl&unuTuBv]v+ueunaXRf0=Jvh!0nKufu8v1w&w7q%w&uHrz:Rgnj5w,uxDJq/(!hNw'5ReCk0s2u3w/w'5ReFd>Za&!*UaA=<wkgsRnSJv^!%Refifw3vyRgOKu_B'!,<]gkiiu:w&Rh<=C@a^<B57@2F{[<B5@aW:=3away9A5aW=<B=C@a^<B57@2F{Ie-#`(^^^bCara.b8aza6!/bZ,!adTbnTbOb+aFaS!aAT9@Wf~2Wli3Dtl2@d,#Y&RfnRfmJwJZtN~GqyJva&!VyMg<v~Rm%iXuJu3Rm9Jv[_=]ih9wlkDRkCd1#`(@Wg>2Wls3cH#T(@<Rj*=>Ri|b~'#23s9h<~El.d'#Y&Dtxi^rzvdRl#d*#U%(o|B2s`hJwSaxRmDKv4B&!1:Rmdd5#`'Vx}to~Hq{x'f1v3(!BA5ba|bJv_&!Wfug1v]ReIdO+U/Y#&G}-8wze=Rh{g1v]ReHg/uQRf/by#)ibQwERl/cH#T(@<Rj+=>Ri{cNu+vlax-!(#a0qa9<Rii2;;bU{H;x<i=&X#Rk`<4wwi=C9H~8xAI(Y#<azRi@45wXI<B9;5bb~7dL(X#Xa(+!aL6Vy{g5QqOau:5au2@ay547EzbxOcU(UX-T#Ta#:Cbb|A?wjh/b_|SOw6ARgtihr}u7Rhy<d1#T)X1@@=I|~=ay<2@@=aybb}Sj3vLv;<d,#Y(56H}A978H}@dGpvs@uAu`vcw9*!aFa+ai%(b!aXa8.a?a[ozWey=sU2@G}Nch&U#Rf_WexKu+D#'!t:~Gr`~?r^j]uNr|~FRg*j^psurwJt|RmcKv)@&!)7Rkv~Br[@wxfO:Rl3co#U'6Rezj_q#vIuavjRltwzeyh@vr5JqD0!>aY?C9:9au@9Cb]}9cl#U*5;5<H||jbuus1ucv&Rfvg1v~d/pppzqFr^a--a~!aMat1(hFv;Wiz@@=Izoj5uuv-7Rix~Cw`fk2WlVcZ#X,k)u3vWs@u2]ktg;wEx'fBq(_2Wg/jTv|vV~EfoJv]!15x'hzqG!(P~EfU~CRl_j6v(us5x4i-#T(2WmZ?C2F|d>Kq<aj1!*jTqIsBv=Wl`~Cw`fi2WlWj`v0u*~>RlR=c>Z,k#u3vWs@u2]kr<c1Z+jTqIsBv=Wla~Cw`fm2WlXdmb3!a{(arZa`bkTa%TbQTa-a9+c'!aM!/[yL=Bqug.w'RifhFvyDRj.g>vgwyk^9]k^Jv3_@WfbAARkhJw2_[x|JvB_wkoIRoKwkoJRoLd'(Y#<]gm=<9<H|yd'%_X#skDtb3awwqkgNulRkgdB#^',9:p'hJwSaxRmEBwVb8@4=H|qLu+w50&!)@3qs~?pU>Awwn;;Rn=c:Z'ARn<=<qwKvC@!/&~BqqJv6!&]eVb^z^xRge'/a%+^`#Sge}6<4Rn3=]n0Pw2>Rn8Jw0!&>Rn:>Rn6cY#a7+!a&=<wkaNw~h3z_c5Z{=wjh#=]nLKv^D!&)Vyz=bW|swYb<WetcG#T(2wxa@qVx@gD#Y&b^|V5JwG&!5bb|pg/w&RgD@x=kHs=uAvn!a%%/'+RmSRh694Ro`g-vaRmRhHv-]mlxCcS#`&ba~.5cD#Ta)P~=d,#Y(56H{>978H{Dd_#{2^Y%_+qbbb{6g3sERhsbU{?dfa.,`a(Xa<!aiX#(55RiG54RiHcI#T'WiU3RiVNvdwtfcRlKNvdd,#Y&RlHRlExQgf.1*^T'X#Sgf}6Wn4=]hfPrk>Rn7Jw0!&>Rn5>Rn9Lunw?&a2!,5<oq@@wqfdRlJj5Q~=d,#Y(~ARfcOuN]fdDKw;ay(}i!547E}j?cI#T(@5bV}iCbV}hdv(^^Tb?a40,b##Tbo!a*bR!a<b|a/!aKai!aU[yK=]o^g:v>ReGJwPZtK<7Rh+h<~El,Pv#5ReR@awwxjCg,ulRjDJv6&!]j!z?aQeeg>w=Sh<eeJw;!&axEzOg,Qosc!#*:wkeJ]eJ>x'h-u(!%Ro.w~h.zPdNZ(X,Ya![x{;9ReY;wkgxRiF:x?ap#Y&RmUg<s2Rkod]+UY0TZ'!a&A9sw<=bczLNvuw{gqzNhJwSaxRmCKuLay!#&s_Rf-55b^{uJvZa!!c%#(55Ri654wmiu5RiuawLu,vp!+}^%b_}Y9;wkgxba}o>A9:=b^}zKuh=a''!3awRk3c*'!#aHRk6c+Z&Rk5Rk4Jv)&!awRjSawd9*`#0?C2@EzMj8u<uJ5RmbjQrquJu3x,k>uq@_+=ayb^|W~ARkEOuN]k@7dhzV^X/X&a-#zRzSb`zXcJzTT#2WkVKvDBzW!%FzY9;5bbzWjQrquJu3Jw3%!b`zU=ayb^zQd:#X(T-a!6Vyywxh}=b]{Jg=u1RiAdGp~qHtzv!w(wA+a+a;<!aJaYai'anasb(=azRmV:Cbb{MLq2vb!%')RjuRjrRjtRjqx3jnqCw3!%')Rk(Rk+Rk&Rk)Lq2vb!%')Rj{RjxRjzRjwLq2vb!%')RjsRjpRjfRjex3jcqCw3!%')Rk'Rk*RjkRjl9<CbbzfOu4ARhxLq2vb!%')RjyRjvRjhRjgx=joq*uKvb!%')+-Rk.Rk%Rj~Rk-Rk#Rj}x=jdq*uKvb!%')+-Rk,Rk!Rj|RjmRjjRjidAq&qKs@uAv8Aa.'*-a@a&0!aM@a5[y73Dsy3Ds|3Dt):wxgI2sHJwJZt.~Gqxwsf0ikrzt}Rl0Jvy_[xj~HqzKv_A|D!&WfP8axRoVcf,U#k(v]v+ueunaXRf1Ju}'!g8u#Ri=jQw!sCunLprq>!,')~<5qeGzq9F{W=c##%s5au:5aU3CBE|;d4#X(D!a&6Vygx(b;#(=]ed?C2F{N<capoq2r[a&!aPa9,'Pw;5s:@@=I|,55w_h|@@=IzcP~=x'fCqB_2Wl2>aU@@=I|1OuNBc1Z+jTqIsBv=Wlc~Cw`fl2WlZ~AcTa%!Z+jTqIsBv=Wlb~Cw`fh2WlYk+uNqJsBv=WlSg,u3dca3#UXaMYa)TaB-=cM|7T#<bI}l5@B932:aV2G{BOuNBJq:|M!5Ezt=<B=C@a^<B57@2F{v>cB{/T#=ay<bI{3Jv6!a.6BKq0ah&+!5E}HP~Ef{978BaU@@=Iza<7d#.Y#978BaU@@=IzH~AJq0!(@@=IzG978BaU@@=IzFe,aU*Y&^^^bvJb,b:bFad!a,c2Ta>aL.bo6!a#CbTa'T#Re{2Wlh2@G{yg6t~Ro_NvdRfticuRQRllJv3&!x&c|zs@Jw3!%RflwpfkRlpKuL;%(!Re<@G|C2GzdhIvuBwgjAg-u0RjAKQB%!(GzZ@G|5NuuRl7d='T+Y#Vy[g<v~Rm!==G|>JvA!)@wma=]m1ifuaw&RmnLs@vT'!|/+[y,g:v>ReTJw1!#qX=x!eC{bLu+wT&)ZtZauq_~Graci&U#F|89:r_Lupvq!.)&2RlG8RfaC=x!eF{_h?rpWlmd&'!#X|&]k::xJey#`'T|+<E|&2@H|%dE#(^,g;u.RiEg6vjRiC9xCkA{O|zY#g=ucRmXKs0@!&*@G|m@awRknJuh!,3d(}gY}eJvj!%Rm):Jw3!%Rm+Rm-Ls0w(&!a(a#@b[|6cZ#X'7RkxWgAOu4ARn'dH'U#Y*Vz-Wm'CARm}d]*#a%^a*T'aK!a<9bV{PC=p*Jw4!&SgxcbB5r]idw(wBRmF7xFkt#&`(Rm/Rm8E|!JuY_9:Rl5=wrgr2:bbxd@xXfB(a*#T+!.X0X1Ta/a'T&RlDRfL>RlyARl9b[z[>RfZ:RlL:RfRwlg/ARl;9;RlxKv,A/!%7s69<74=BA5ba{-8Bde#`a<XaKYa1,a'P~=wxfB2bZ}}?C972@@=I}r8@55B9;5bb}G978B2@@=aybb}3j3vLv;<Jw3&!>Rfk=ayb^}4~Ad1#`*@@=aybb{w2@>==<bbz]dx+UY#^UaF!a9!bB'Ya1.!ajXa#%olRhD[y=3Dt#Ov5BrHKuMB%!(Rf^Wep~HrJwkiQjKr|~FRg)Ku+D#'!t5~GrF~?rDdV)UY,Z/_7RkuG{<~BrBg,rlsO:235B@bX}|d?a1!#`(6Vyn5@d##Y+jTv|vV~EfIj]uNpn~FRfH7Lq2vb1!a9-978BaU@@=Iz9978BbU}#~AJq0!(@@=Iz8978BaU@@=Iz7~AJQ|}!978BbU}!JvkaK!AdUa21-U#`a+(g/vsRn~Ou!5RPj:rmu9WhOjXuvvNr}:RhAj^v(pyw8unRn[kPr}p|u7vwv]RiSBd;pppzq@qHQa?(b.!a.a`@.|xa(hFv;Wiyj5uuv-7Riw~Cw`fg2WlU978BbU|wOuNBJqG!(P~EfD~CRlQcZ#X,k)u3vWs@u2]ksg;wEx'f@q1_2Wg.j]uNpn~FRfqJv]!15x'h{qG!(@@=IzK~CRl^j6v(us5x4i,#T(2WmY?C2F{1>Kq<aj1!*jTqIsBv=Wld~Cw`fj2Wl[j`v0u*~>RlT=c>Z,k#u3vWs@u2]kq<c1Z+jTqIsBv=Wle~Cw`fn2Wl]dn1#c(a(b^a2!b/bAT(bj!aDa7bu,a_a{c0!2T0g:v>ReD2@G{42@G{5~DpM~<5rc=Bx6i>{RT#RnI@zCx]y]z:2Jv[!zr5Awyk]9]k]dD(Y+X#6Vz.g=wKtgwhaCwgmTWj2Lu,w%_+/[y-B;b^xeg3u3Rj-2@bX{*KrJ<!+'@Wg(g?QRlC@Jv`!%b[zIwsfII}8JQ_@w|kW|=Jv(%!AqcOuNBJvEzh!bYzjLs@wP#(0!oy@>RkdJwMZtc3Dtd@BcG#T'9bWxg2@2Fznd*#Y+;2x'c}w<zizixNgwa#Z'U+!/!a'!a+w~g~z6wcn{Rn}wcnzRn|5Rh%=]nJg5vuRmvNvdRlvcprJu}w*az*a#!%.a.'Bot9qT]kj@Wg'ay2Gzv@Jv`!%b[zEwsfHI}1;ck#Ux`<Cbbx_Lu+w!a&0*!wko*wwo,So,}6Juqxf!E}PigQuyRm`d3(`#8>Rn%:A5B;bZ~%KvhCa!a2!x>k7#Uxb@b{#xaRk7Jw0!)>wwhlShl}6>wwhmShm}6CJvB!.x'hhvj{!!5Bwkhhbaz}x'hivjz~!5Bwkhibaz|xEhTrNu,v-vpD!a%&/)a3a.,%Ro2t[CE{)@3re9b]{%wjo09:rgc:Z&Ro6=<riifuaw&RmoKrNA!%(Ro4>Ro89;Ri`dSaL'UYzxZb)7Rka3xRhT&!,!#^1U}vbaz{>>@=be}yC@:D5bazzKu+A&!}{?ba}y>>@=be}wxBh[t`u~vJvr!%a!a()a,a0a4RoC=]o;Ju(!%RoGRhdwjh`=]oAg>w#Ro?g5vuRo=NvdRl|Ku]C.!&;RoEJvB!%RoORoMBx'h[v+_?w~h`}~5?w~hd~!xKh]oiptu-utv.vp!#%&a30a@a'a+(a/aOp(o~p!RoDJu(!%RoHRhewjha=]oBNvdRl}g>w#Ro@g5vuRo>c[#X']o<CauRoRAd-#Y':RkpauRoQKu]C.!&;RoFJvB!%RoNRoPBx'h]v+_?w~ha}t5?w~he}ue!/UbhYacXaW^Tc&a;b:a-c/#b&aja1(!cL+!bKbt!bmcRc9aIc?8[yW3Dtt94Rg`Jv}!&SiRMzBhEebShEMNuPRe>x7gL#TzuwjirRipc<Z&>on;>z=h-MSh.Mwqczx'a7vj&!>Re4@=ResJt__NuPRi*NuPRi)j]uNr|~FRfzKrJ>_+@Wfy@Wf]2WocKrJ<!+'@Wg%g/QRl@@Jv`!&awRl<wsfFIzgLu(w*!.*&ShBMwvhIRhI9;RhNx1hK'!#Sn]Mx1hK~0!#:2<H~7cNu+w7D*'1ZtW>Rn1~?rOc:Z&Rn2=<rQ<7wjh&=BSnLMc]#X(6Vz)w[b=a!U#9wzgMc3#&(RgMRitRis<x,gKt`ax!&+SioM=BSilMc3#&(RgKRinRimKurB,!&SiQMzBhDebShDM6BJQ!(P~Efx978B2@@=I}WLrJw!!,a*&@G}O@9wkibRid@@x'fKwC!&SlDMSfLMjUv~Q~EfKKv3@a+!(hFv-]mpx/hYZ(C5RiWz<o/MwkhY?So/M@x,gbvfB*&!SgEM:SoeeehFu3:Rgbda(,^TZa)X/7Sg[eb:2RgI~BrMC@wgkc:wwkcRerx3h(uUvK!&*,SnOM4Sh*MArRg;wHRh(x=h;rJvPwI!a4',a'0@Wg&=BSh/Mg>w=Rh=g3w*wwgGRgGcW(X#;Sg}M2Gzk@Jv`!&awRl=wsfGIz`dKZ*T'Y-:RhR7RhQg5u-p`j6v(us5d,#Y+~Awkia?RicOuNBwkibba}Ld6p~tyu_vbAa'a+!a/'a3aEa8a!>Sh,ebJv{!&Sh@ebSaReb9;SgwebNuPRi(NvdRl)NuPRi'hHu^<Rm^Jvv_@Wl(g;u1Si/ebKu'B&!*Sh?eb@Wl'z@aPeb95Si.ebcpputyvjB)!,&a+0a%ShAMWeK@G}C@WfJ9;RhMwvhH9w{ia}ix,hJvRA1(!zAn[MRhHx1hJ~*!#hFv(BSn[MBJQ!(@@=I~'978B2@@=I}2db.Ua<'X}+T#a0XaG2G}E;wkg|wuh!Rh!x,hZu,@)!&So0MVy)C5RiXACJvB!&5RiY5RiZg8w)cG}*T#2@bU}=KsA>(!a.3wkhZba~(x,h^u(A!&(SoCMRhb5Bz=h[eb?w~hb~6x,h_u(A!&(SoDMRhc5Bz=h]eb?w~hc~6e)aA1T#T,^^^c-bMb&blcPaP(a/!0!bA=b5c@a(!bfbrc#2afwmhARnjwchORnp2Wlf3DtsNvdRl-2@wpa<]m0bx(#:awRk2@Jw3!%RfhwpfgRlnKQB%!(G{V@G|'NuuRl6d='T+Y#VyUg<v~Rl~==G|<Jv+'!aYShC}6@B<5?ba~8@Jw3'!g2QRljhLrpWlOd+#Y'g.w'rIg>w*wgj@g-u0Rj@Lu+wT&)ZtUauq]~GrGci&U#F|39:rELrNvj!.%*RhCwunfw~nf~:9;Ri]>wtnhg;wHRnhx3hDs@v~!/+'@Wfr@9RkSNu&Rlo=@<5GzoKs0@_+@Wl+@awRkmJuh!-3d(}pY#qWJvj!%Rm(:Jw3!%Rm,Rm*de&!1U-U#`)Re;@G|.@9Ri82@wjfvRlq=@<5GzpLvOvr!).&2RlF8Rf`C=x!eE{.Jw3_g2QRlkhLrpWlPde(!#U{s,UXa*Ta'[y'g:v>ReS;x0PZ&RnlRnn~HrKJw1}f!=x!eB|2w]aP(#Xa&a*Ta.Ua2a7=]iOd'#Y&Ro&WnWg;u.RiDg6vjRiBNvdRlzhNvj]nYJuW_2Wm3x)kFze{9d])!a.!,Y01!#&aC!a3RndC=ox~BrC@2b^{pg,rlse7x'ksuq!%Rm.E{xidw(wBRmGx9o+)X#wwo-So-}69:Rl4@xSf@a#XZ'X)X,Ta(/ARl8b[xc>RfY:RlI:RfQwlg.ARl:9;Rlwdn'#^XafaQa1X1TaHTa)@b[{zcZ#X'7RkwWg@Ou4ARn&x)kG#{,g7u/RkGdH'U#Y*Vz'Wm&CARm|bx#(A]gUbUzJj9Q~=d,#Y(56H}l978H{U7d,0#U*2>ABb_xZ978BbU{e~AJQ{g!978BbU{hxMh?ad{oUYZ.x1h?{l!#:2<H{mx3n[t{vl!,&a%3Ro(z=iS}6ARnr=Bwsn^wvn`Rnbd`*T}B0!#^X'BG{c9b]{a>>@=be}F?JvS!&BG{d7BG}(Bde#`a1X,Ya@!a'P~=wxf@2bZ}I56B2@@=aybb}08@55B9;5bb}<j3vLv;<Jw3&!>Rfg=ayb^}&OuNBKuLA!)a!P~=x#fD{f2@>==<bbzl?C972@@=Ix^d6rSu,v7w*C(0a)a6#B+a%!sQ[y?3Dt%3[xn~<5rLOu!5p@Ku+D#'!t7~GrP~?rNKvlaya7'!h+v-5qMg=t|cd,U#5AAaa5Abb{S@52B5@a[@52B5Gx[iXueu;d<#`a(!/549C;ag>23ExY5@Dah89b^~689Jv)!~2b[~1Lv'w(%*!a#bX|aPrmawRe]keu7uhv-q6rxu,q`xTo]/a5aU!bNaDXbi!b-!ao!b<bwA!#5@B932:aV2G|:d-)Y#hJrL>RhG<7@C5<H|_=Cau:5aj5@B932:bJ|ng>vIbs)#?C2F|9jPv0w.vISh-MKvUaz(.!9ABbb|[5;5<H|Eg>unwfh;9:4E|YjQsBt|vjx'hYq3!(?C2F|J:2<BaY?C2F|GOu!5x,g|p{ah!-(?C2F|c9:4E|OjXuvvNr}:Rh&i[w*t|cd+U#jJvsu)vsSn~Mkfrmu9p}u7vwv]So!McW#Xa!ax5@A5aY:5;5<H|>kJv~vYrquJu3x4ib#T)2@SmZM?C2F|Bj:rmu9@xPhI(a*a#U#`a3-5Abb|L~@:RhK9:4E|0@52B5G|#C::aY?C2F|-:2<BaY?C2F|.5Jvk!a)javYrquJu3x4ia#T)2@SmYM?C2F|HAxPhH(!a#U#`a*-5Abb|4~@:RhJ9:4E|R@52B5G|F:2<BaY?C2F|Sc^#Xa2j=Qq5CJvB!-g<v{z;hhM?C2F|Zi[vrv{z;hiM?C2F|XKsA>!a)-g<v{z;h[eb?C2F|]i[vrv{z;h]eb?C2F|^iZu.vix,hZq3ah!.(?C2F|QOu!5ShXM:2<BaY?C2F|P", 13494, 2713, 49, 25, 61);
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/entities@8.1.0/node_modules/entities/dist/generated/decode-data-xml.js
+//#region node_modules/.pnpm/entities@8.1.0/node_modules/entities/dist/generated/decode-data-xml.js
 /** Packed XML decode trie data. */
 var xmlDecodeTree = /* #__PURE__ */ new Uint16Array([
 	512,
@@ -27268,7 +27282,7 @@ var xmlDecodeTree = /* #__PURE__ */ new Uint16Array([
 	24615
 ]);
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/entities@8.1.0/node_modules/entities/dist/internal/bin-trie-flags.js
+//#region node_modules/.pnpm/entities@8.1.0/node_modules/entities/dist/internal/bin-trie-flags.js
 /**
 * Bit flags & masks for the binary trie encoding used for entity decoding.
 *
@@ -27318,7 +27332,7 @@ var BinTrieFlags;
 	BinTrieFlags[BinTrieFlags["VALUE_MASK"] = 8191] = "VALUE_MASK";
 })(BinTrieFlags || (BinTrieFlags = {}));
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/entities@8.1.0/node_modules/entities/dist/decode.js
+//#region node_modules/.pnpm/entities@8.1.0/node_modules/entities/dist/decode.js
 var CharCodes;
 (function(CharCodes) {
 	CharCodes[CharCodes["AMP"] = 38] = "AMP";
@@ -27773,7 +27787,7 @@ function determineBranch(decodeTree, current, nodeIndex, char) {
 	return -1;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/common/html.js
+//#region node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/common/html.js
 /** All valid namespaces in HTML. */
 var NS;
 (function(NS) {
@@ -28305,7 +28319,7 @@ var NUMBERED_HEADERS = /* @__PURE__ */ new Set([
 ]);
 TAG_NAMES.STYLE, TAG_NAMES.SCRIPT, TAG_NAMES.XMP, TAG_NAMES.IFRAME, TAG_NAMES.NOEMBED, TAG_NAMES.NOFRAMES, TAG_NAMES.PLAINTEXT;
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/tokenizer/index.js
+//#region node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/tokenizer/index.js
 var State;
 (function(State) {
 	State[State["DATA"] = 0] = "DATA";
@@ -30364,7 +30378,7 @@ var Tokenizer = class {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/parser/open-element-stack.js
+//#region node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/parser/open-element-stack.js
 var IMPLICIT_END_TAG_REQUIRED = /* @__PURE__ */ new Set([
 	TAG_ID.DD,
 	TAG_ID.DT,
@@ -30654,7 +30668,7 @@ var OpenElementStack = class {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/parser/formatting-element-list.js
+//#region node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/parser/formatting-element-list.js
 var NOAH_ARK_CAPACITY = 3;
 var EntryType;
 (function(EntryType) {
@@ -30744,7 +30758,7 @@ var FormattingElementList = class {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/tree-adapters/default.js
+//#region node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/tree-adapters/default.js
 var defaultTreeAdapter = {
 	createDocument() {
 		return {
@@ -30906,7 +30920,7 @@ var defaultTreeAdapter = {
 	}
 };
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/common/doctype.js
+//#region node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/common/doctype.js
 var VALID_DOCTYPE_NAME = "html";
 var VALID_SYSTEM_ID = "about:legacy-compat";
 var QUIRKS_MODE_SYSTEM_ID = "http://www.ibm.com/data/dtd/v11/ibmxhtml1-transitional.dtd";
@@ -31005,7 +31019,7 @@ function getDocumentMode(token) {
 	return DOCUMENT_MODE.NO_QUIRKS;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/common/foreign-content.js
+//#region node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/common/foreign-content.js
 var MIME_TYPES = {
 	TEXT_HTML: "text/html",
 	APPLICATION_XML: "application/xhtml+xml"
@@ -31262,7 +31276,7 @@ function isIntegrationPoint(tn, ns, attrs, foreignNS) {
 	return (!foreignNS || foreignNS === NS.HTML) && isHtmlIntegrationPoint(tn, ns, attrs) || (!foreignNS || foreignNS === NS.MATHML) && isMathMLTextIntegrationPoint(tn, ns);
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/parser/index.js
+//#region node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/parser/index.js
 var HIDDEN_INPUT_TYPE = "hidden";
 var AA_OUTER_LOOP_ITER = 8;
 var AA_INNER_LOOP_ITER = 3;
@@ -33740,7 +33754,7 @@ function endTagInForeignContent(p, token) {
 }
 TAG_NAMES.AREA, TAG_NAMES.BASE, TAG_NAMES.BASEFONT, TAG_NAMES.BGSOUND, TAG_NAMES.BR, TAG_NAMES.COL, TAG_NAMES.EMBED, TAG_NAMES.FRAME, TAG_NAMES.HR, TAG_NAMES.IMG, TAG_NAMES.INPUT, TAG_NAMES.KEYGEN, TAG_NAMES.LINK, TAG_NAMES.META, TAG_NAMES.PARAM, TAG_NAMES.SOURCE, TAG_NAMES.TRACK, TAG_NAMES.WBR;
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/index.js
+//#region node_modules/.pnpm/parse5@8.0.1/node_modules/parse5/dist/index.js
 function parseFragment(fragmentContext, html, options) {
 	if (typeof fragmentContext === "string") {
 		options = html;
@@ -34002,7 +34016,7 @@ function errorMessage(error, fallback) {
 	return error instanceof Error ? error.message : fallback;
 }
 //#endregion
-//#region ../../../../../../private/tmp/document-contract-data-deps/node_modules/.pnpm/@kubohiroya+turbowarp-named-data@0.8.0-rc.0/node_modules/@kubohiroya/turbowarp-named-data/dist/composition.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-named-data@0.8.0-rc.0/node_modules/@kubohiroya/turbowarp-named-data/dist/composition.js
 var NAMED_DATA_REGISTRY_SYMBOL_KEY = "@kubohiroya/turbowarp-named-data/registry";
 var NAMED_DATA_REGISTRY_SYMBOL = Symbol.for(NAMED_DATA_REGISTRY_SYMBOL_KEY);
 var NAMED_DATA_NAMESPACE_PATTERN = /^[a-z][a-z0-9.-]{0,63}$/u;
