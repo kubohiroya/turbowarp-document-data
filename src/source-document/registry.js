@@ -2,7 +2,8 @@ import {normalizeSourceDocumentPreview} from './preview.js';
 import {normalizeDocsURL} from './docs-url.js';
 import {normalizeSourceDocumentSchema as normalizeSchemaMetadata} from './schema.js';
 import {decodeSourceDocumentReference as decodeReference, encodeSourceDocumentReference as encodeReference, identifier, fail, hasControlCharacters, SourceDocumentError as EmbeddedYamlError} from './reference.js';
-export const providerRegistrySymbol = Symbol.for('@kubohiroya/turbowarp-embedded-yaml/provider-registry/v1');
+export {sourceDocumentRegistrySymbol as providerRegistrySymbol} from '@kubohiroya/turbowarp-document-source';
+import {sourceDocumentRegistrySymbol as providerRegistrySymbol} from '@kubohiroya/turbowarp-document-source';
 const validAdapter = adapter => adapter && ['inspect', 'capture', 'prepare', 'commit', 'dispose'].every(name => typeof adapter[name] === 'function');
 const reference = value => typeof value === 'string' ? decodeReference(value) : decodeReference(encodeReference(value));
 const sourceRepresentations = value => {

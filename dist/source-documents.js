@@ -1,18 +1,6 @@
 // src/source-document/reference.js
-var SourceDocumentError = class extends Error {
-  constructor(code, message) {
-    super(message);
-    this.name = "SourceDocumentError";
-    this.code = code;
-  }
-};
-var fail = (code, message) => {
-  throw new SourceDocumentError(code, message);
-};
-var hasControlCharacters = (value) => Array.from(value).some((character) => {
-  const code = character.codePointAt(0);
-  return code < 32 || code === 127;
-});
+import { SourceDocumentError, encodeSourceDocumentReference, decodeSourceDocumentReference } from "@kubohiroya/turbowarp-document-source";
+import { fail, identifier, hasControlCharacters } from "@kubohiroya/turbowarp-document-source/protocol";
 
 // src/source-document/docs-url.js
 function normalizeDocsURL(value) {

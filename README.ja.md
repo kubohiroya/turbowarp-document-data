@@ -101,3 +101,7 @@ Issue #21の未公開ローカル実装です。切戻しは起動時フラグOF
 作品切替（`RUNTIME_DISPOSED`→`PROJECT_LOADED`）ではキャッシュ済みの拡張・store・providerを再利用します。古い編集captureとHTML/Markdownの一時値・session handleだけを無効化し、次の作品のstorageでも永続登録を利用できます。登録を永久に解除するのは明示的な `dispose()` だけです。
 
 編集済みブロックを正本へ保存しながら同じ表現を保持するproviderは、`fromRepresentations`へ自分のactive kindを明示できます。宣言がない同形式要求はownerを呼ぶ前に拒否し、`fromSource`だけでは許可しません。構文検証・古い状態の拒否・原子的なcommitはownerの責任です。ownerとhostの対応bundleを一緒に更新して再読込してください。
+
+## 文書参照の実装
+
+registry・原文ストア、所在変更の保存、ハット・マーカー、作品への差分適用を `/document-source`・`/project-views`・`/view-metadata`・`/document-views` から提供します。公開契約はdocument-source、YAMLブロック変換はyaml-jsonが担当します。[実装ガイド](docs/source-integration.ja.md)も参照してください。

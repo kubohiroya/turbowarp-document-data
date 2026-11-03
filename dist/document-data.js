@@ -7699,18 +7699,58 @@ var block_definitions_default = {
 	]
 };
 //#endregion
-//#region src/source-document/reference.js
+//#region \0@oxc-project+runtime@0.148.0/helpers/esm/typeof.js
+var import__2020 = /* @__PURE__ */ __toESM(require__2020(), 1);
+function _typeof(o) {
+	"@babel/helpers - typeof";
+	return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function(o) {
+		return typeof o;
+	} : function(o) {
+		return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o;
+	}, _typeof(o);
+}
+//#endregion
+//#region \0@oxc-project+runtime@0.148.0/helpers/esm/toPrimitive.js
+function toPrimitive(t, r) {
+	if ("object" != _typeof(t) || !t) return t;
+	var e = t[Symbol.toPrimitive];
+	if (void 0 !== e) {
+		var i = e.call(t, r || "default");
+		if ("object" != _typeof(i)) return i;
+		throw new TypeError("@@toPrimitive must return a primitive value.");
+	}
+	return ("string" === r ? String : Number)(t);
+}
+//#endregion
+//#region \0@oxc-project+runtime@0.148.0/helpers/esm/toPropertyKey.js
+function toPropertyKey(t) {
+	var i = toPrimitive(t, "string");
+	return "symbol" == _typeof(i) ? i : i + "";
+}
+//#endregion
+//#region \0@oxc-project+runtime@0.148.0/helpers/esm/defineProperty.js
+function _defineProperty(e, r, t) {
+	return (r = toPropertyKey(r)) in e ? Object.defineProperty(e, r, {
+		value: t,
+		enumerable: !0,
+		configurable: !0,
+		writable: !0
+	}) : e[r] = t, e;
+}
+//#endregion
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.2.0-rc.0/node_modules/@kubohiroya/turbowarp-document-source/dist/wire.js
 var PREFIX = "tw-embedded-yaml:1:";
 var SourceDocumentError = class extends Error {
 	constructor(code, message) {
 		super(message);
+		_defineProperty(this, "code", void 0);
 		this.name = "SourceDocumentError";
 		this.code = code;
 	}
 };
-var fail$2 = (code, message) => {
+function fail$2(code, message) {
 	throw new SourceDocumentError(code, message);
-};
+}
 var hasControlCharacters = (value) => Array.from(value).some((character) => {
 	const code = character.codePointAt(0);
 	return code < 32 || code === 127;
@@ -7745,6 +7785,151 @@ function decodeSourceDocumentReference(value) {
 	if (encodeSourceDocumentReference(reference) !== value) fail$2("REFERENCE_INVALID", "The source document reference is not canonical.");
 	return Object.freeze(reference);
 }
+//#endregion
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.2.0-rc.0/node_modules/@kubohiroya/turbowarp-document-source/dist/schema.js
+var sourceDocumentSchemaLimits = Object.freeze({
+	maxBytes: 1048576,
+	maxDepth: 64,
+	maxNodes: 1e5
+});
+/** Copy finite JSON without invoking accessors or serialization hooks. This does not interpret JSON Schema. */
+function normalizeSourceDocumentSchema(metadata) {
+	if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) fail$2("SCHEMA_INVALID", "Inline schema metadata must be an object.");
+	const properties = Object.getOwnPropertyDescriptors(metadata);
+	if (!properties.id || !Object.hasOwn(properties.id, "value") || !properties.schema || !Object.hasOwn(properties.schema, "value") || Object.keys(properties).some((key) => key !== "id" && key !== "schema")) fail$2("SCHEMA_INVALID", "Inline schema metadata requires only id and schema.");
+	const id = identifier(properties.id.value, "schema id");
+	const root = properties.schema.value;
+	if (!root || typeof root !== "object" || Array.isArray(root)) fail$2("SCHEMA_INVALID", "An inline JSON Schema object is required.");
+	const path = /* @__PURE__ */ new Set();
+	let nodes = 0, characters = 0;
+	const clone = (value, depth) => {
+		if (++nodes > sourceDocumentSchemaLimits.maxNodes || depth > sourceDocumentSchemaLimits.maxDepth) fail$2("SCHEMA_LIMIT", "The inline schema is too deeply nested or has too many values.");
+		if (value === null || typeof value === "boolean") return value;
+		if (typeof value === "number") {
+			if (!Number.isFinite(value)) fail$2("SCHEMA_INVALID", "Schema numbers must be finite.");
+			return value;
+		}
+		if (typeof value === "string") {
+			characters += value.length;
+			if (characters > sourceDocumentSchemaLimits.maxBytes) fail$2("SCHEMA_LIMIT", "The inline schema exceeds its size limit.");
+			return value;
+		}
+		if (!value || typeof value !== "object") fail$2("SCHEMA_INVALID", "Schemas must contain only JSON values.");
+		if (path.has(value)) fail$2("SCHEMA_INVALID", "Cyclic schema payloads are unsupported.");
+		if (Object.getOwnPropertySymbols(value).length) fail$2("SCHEMA_INVALID", "Schemas cannot contain symbol properties.");
+		const prototype = Object.getPrototypeOf(value);
+		if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) fail$2("SCHEMA_INVALID", "Schemas must use plain JSON objects.");
+		path.add(value);
+		const result = Array.isArray(value) ? [] : {};
+		const properties = Object.getOwnPropertyDescriptors(value);
+		if (Array.isArray(value) && (value.length > sourceDocumentSchemaLimits.maxNodes || Object.keys(properties).filter((key) => key !== "length").some((key, index) => key !== String(index)) || Object.keys(properties).length !== value.length + 1)) fail$2("SCHEMA_INVALID", "Schema arrays must not contain holes or custom properties.");
+		for (const [key, property] of Object.entries(properties)) {
+			if (Array.isArray(value) && key === "length") continue;
+			if (!Object.hasOwn(property, "value") || !property.enumerable) fail$2("SCHEMA_INVALID", "Schema payloads cannot contain accessors or hidden properties.");
+			characters += key.length;
+			if (characters > sourceDocumentSchemaLimits.maxBytes) fail$2("SCHEMA_LIMIT", "The inline schema exceeds its size limit.");
+			Object.defineProperty(result, key, {
+				value: clone(property.value, depth + 1),
+				enumerable: true,
+				writable: false,
+				configurable: false
+			});
+		}
+		path.delete(value);
+		return Object.freeze(result);
+	};
+	const schema = clone(root, 0);
+	const result = Object.freeze({
+		id,
+		schema
+	});
+	if (new globalThis.TextEncoder().encode(JSON.stringify(result)).byteLength > sourceDocumentSchemaLimits.maxBytes) fail$2("SCHEMA_LIMIT", "The inline schema exceeds its UTF-8 size limit.");
+	return result;
+}
+//#endregion
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.2.0-rc.0/node_modules/@kubohiroya/turbowarp-document-source/dist/preview.js
+function fail$1(message) {
+	throw new SourceDocumentError("DOCUMENT_PREVIEW_INVALID", message);
+}
+var plain = (value) => value && typeof value === "object" && !Array.isArray(value) && [Object.prototype, null].includes(Object.getPrototypeOf(value));
+/** Copy finite declarative JSON only; no project archives, owner payloads or executable callbacks. */
+function normalizeSourceDocumentPreview(model, requestedKind) {
+	identifier(requestedKind, "preview representation kind");
+	if (!plain(model)) fail$1("A declarative document preview is required.");
+	const allowed = /* @__PURE__ */ new Set([
+		"kind",
+		"source",
+		"blocks",
+		"rootIds",
+		"blockDefinitions",
+		"menus"
+	]);
+	if (Object.keys(model).some((key) => !allowed.has(key))) fail$1("A preview cannot contain project, archive or asset payloads.");
+	const ancestors = /* @__PURE__ */ new Set();
+	let nodes = 0, bytes = 0;
+	const copy = (value, depth = 0) => {
+		if (++nodes > 5e5 || depth > 80) fail$1("The document preview exceeds its structural limit.");
+		if (value === null || typeof value === "boolean") return value;
+		if (typeof value === "number") {
+			if (!Number.isFinite(value)) fail$1("Preview numbers must be finite.");
+			return value;
+		}
+		if (typeof value === "string") {
+			bytes += new TextEncoder().encode(value).byteLength;
+			if (bytes > 8388608) fail$1("The document preview exceeds its byte limit.");
+			return value;
+		}
+		if (!value || typeof value !== "object" || ancestors.has(value) || !Array.isArray(value) && !plain(value)) fail$1("Preview data must be finite plain JSON without callbacks.");
+		if (Object.getOwnPropertySymbols(value).length) fail$1("Preview JSON cannot contain symbols.");
+		const properties = Object.getOwnPropertyDescriptors(value), array = Array.isArray(value), result = array ? [] : {};
+		if (array && (!Number.isSafeInteger(value.length) || Object.keys(properties).length !== value.length + 1)) fail$1("Preview arrays cannot contain holes or custom fields.");
+		ancestors.add(value);
+		for (const [key, descriptor] of Object.entries(properties)) {
+			if (array && key === "length") continue;
+			if (!Object.hasOwn(descriptor, "value") || !descriptor.enumerable) fail$1("Preview JSON cannot contain accessors or hidden fields.");
+			bytes += new TextEncoder().encode(key).byteLength;
+			if (bytes > 8388608) fail$1("The document preview exceeds its byte limit.");
+			Object.defineProperty(result, key, {
+				value: copy(descriptor.value, depth + 1),
+				enumerable: true
+			});
+		}
+		ancestors.delete(value);
+		return Object.freeze(result);
+	};
+	const result = copy(model);
+	if (result.kind !== requestedKind || typeof result.source !== "string") fail$1("A preview must identify the requested kind and its source.");
+	if (result.blocks !== void 0 && (!plain(result.blocks) || Object.keys(result.blocks).length > 1e5 || Object.values(result.blocks).some((block) => !plain(block) || typeof block.opcode !== "string"))) fail$1("Preview blocks must be a bounded serialized block dictionary.");
+	if (result.rootIds !== void 0 && (!Array.isArray(result.rootIds) || result.rootIds.length > 256 || new Set(result.rootIds).size !== result.rootIds.length || result.rootIds.some((id) => typeof id !== "string" || !Object.hasOwn(result.blocks || {}, id)))) fail$1("Preview roots must identify distinct included blocks.");
+	if (result.blockDefinitions !== void 0) {
+		if (!Array.isArray(result.blockDefinitions) || result.blockDefinitions.length > 4096) fail$1("Preview block definitions must be a bounded array.");
+		const seen = /* @__PURE__ */ new Set();
+		for (const definition of result.blockDefinitions) {
+			if (!plain(definition) || typeof definition.opcode !== "string" || !definition.opcode || definition.opcode.length > 1024 || seen.has(definition.opcode) || typeof definition.blockType !== "string" || !(typeof definition.text === "string" || Array.isArray(definition.text) && definition.text.every((text) => typeof text === "string"))) fail$1("Preview definitions require distinct full opcodes and declarative labels.");
+			if (definition.blockIconURI !== void 0) {
+				if (typeof definition.blockIconURI !== "string") fail$1("A preview block icon must be an image URI.");
+				let uri;
+				try {
+					uri = new URL(definition.blockIconURI, "https://preview.invalid/");
+				} catch {
+					fail$1("A preview block icon URI is invalid.");
+				}
+				if (![
+					"http:",
+					"https:",
+					"data:"
+				].includes(uri.protocol) || uri.protocol === "data:" && !/^data:image\//iu.test(definition.blockIconURI)) fail$1("A preview cannot include executable icon URIs.");
+			}
+			seen.add(definition.opcode);
+		}
+	}
+	if (result.menus !== void 0 && (!plain(result.menus) || Object.values(result.menus).some((menu) => !plain(menu) || !Array.isArray(menu.items)))) fail$1("Preview menus must contain static item arrays.");
+	if (new TextEncoder().encode(JSON.stringify(result)).byteLength > 8388608) fail$1("The serialized preview exceeds its byte limit.");
+	return result;
+}
+//#endregion
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.2.0-rc.0/node_modules/@kubohiroya/turbowarp-document-source/dist/index.js
+var sourceDocumentRegistrySymbol = Symbol.for("@kubohiroya/turbowarp-embedded-yaml/provider-registry/v1");
 //#endregion
 //#region src/source-document/docs-url.js
 function normalizeDocsURL$1(value) {
@@ -14200,7 +14385,7 @@ function parseDocument(source, options = {}) {
 	return doc;
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.8.0-rc.0/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/yaml-json.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.9.0-rc.0/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/yaml-json.js
 var PARSE_LIMITS = {
 	maxInputBytes: 262144,
 	maxDepth: 64,
@@ -14482,7 +14667,7 @@ function isDataArray(value) {
 	return Array.isArray(value);
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.8.0-rc.0/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/codec.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.9.0-rc.0/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/codec.js
 /** Parse through the existing bounded fragment parser; source text remains the owner's data. */
 function parseValue(source, format = "auto") {
 	const parsed = parseData(source, format, { jsonObjects: "json" });
@@ -14498,12 +14683,8 @@ function parseValue(source, format = "auto") {
 		diagnostic: parsed.diagnostic
 	};
 }
-//#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.8.0-rc.0/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/schema.js
-var import_ajv = /* @__PURE__ */ __toESM(require_ajv(), 1);
-var import__2020 = /* @__PURE__ */ __toESM(require__2020(), 1);
 var profiles = {
-	"draft-07": new import_ajv.default({
+	"draft-07": new (/* @__PURE__ */ __toESM(require_ajv(), 1)).default({
 		allErrors: true,
 		strict: false,
 		addUsedSchema: false
@@ -14556,150 +14737,7 @@ function validateValueWithJsonSchema(schema, value, { dialect = "draft-07" } = {
 	}
 }
 //#endregion
-//#region src/source-document/schema.js
-var sourceDocumentSchemaLimits = Object.freeze({
-	maxBytes: 1048576,
-	maxDepth: 64,
-	maxNodes: 1e5
-});
-/** Copy finite JSON without invoking accessors or serialization hooks. This does not interpret JSON Schema. */
-function normalizeSourceDocumentSchema(metadata) {
-	if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) fail$2("SCHEMA_INVALID", "Inline schema metadata must be an object.");
-	const properties = Object.getOwnPropertyDescriptors(metadata);
-	if (!properties.id || !Object.hasOwn(properties.id, "value") || !properties.schema || !Object.hasOwn(properties.schema, "value") || Object.keys(properties).some((key) => key !== "id" && key !== "schema")) fail$2("SCHEMA_INVALID", "Inline schema metadata requires only id and schema.");
-	const id = identifier(properties.id.value, "schema id");
-	const root = properties.schema.value;
-	if (!root || typeof root !== "object" || Array.isArray(root)) fail$2("SCHEMA_INVALID", "An inline JSON Schema object is required.");
-	const path = /* @__PURE__ */ new Set();
-	let nodes = 0, characters = 0;
-	const clone = (value, depth) => {
-		if (++nodes > sourceDocumentSchemaLimits.maxNodes || depth > sourceDocumentSchemaLimits.maxDepth) fail$2("SCHEMA_LIMIT", "The inline schema is too deeply nested or has too many values.");
-		if (value === null || typeof value === "boolean") return value;
-		if (typeof value === "number") {
-			if (!Number.isFinite(value)) fail$2("SCHEMA_INVALID", "Schema numbers must be finite.");
-			return value;
-		}
-		if (typeof value === "string") {
-			characters += value.length;
-			if (characters > sourceDocumentSchemaLimits.maxBytes) fail$2("SCHEMA_LIMIT", "The inline schema exceeds its size limit.");
-			return value;
-		}
-		if (!value || typeof value !== "object") fail$2("SCHEMA_INVALID", "Schemas must contain only JSON values.");
-		if (path.has(value)) fail$2("SCHEMA_INVALID", "Cyclic schema payloads are unsupported.");
-		if (Object.getOwnPropertySymbols(value).length) fail$2("SCHEMA_INVALID", "Schemas cannot contain symbol properties.");
-		const prototype = Object.getPrototypeOf(value);
-		if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) fail$2("SCHEMA_INVALID", "Schemas must use plain JSON objects.");
-		path.add(value);
-		const result = Array.isArray(value) ? [] : {};
-		const properties = Object.getOwnPropertyDescriptors(value);
-		if (Array.isArray(value) && (value.length > sourceDocumentSchemaLimits.maxNodes || Object.keys(properties).filter((key) => key !== "length").some((key, index) => key !== String(index)) || Object.keys(properties).length !== value.length + 1)) fail$2("SCHEMA_INVALID", "Schema arrays must not contain holes or custom properties.");
-		for (const [key, property] of Object.entries(properties)) {
-			if (Array.isArray(value) && key === "length") continue;
-			if (!Object.hasOwn(property, "value") || !property.enumerable) fail$2("SCHEMA_INVALID", "Schema payloads cannot contain accessors or hidden properties.");
-			characters += key.length;
-			if (characters > sourceDocumentSchemaLimits.maxBytes) fail$2("SCHEMA_LIMIT", "The inline schema exceeds its size limit.");
-			Object.defineProperty(result, key, {
-				value: clone(property.value, depth + 1),
-				enumerable: true,
-				writable: false,
-				configurable: false
-			});
-		}
-		path.delete(value);
-		return Object.freeze(result);
-	};
-	const schema = clone(root, 0);
-	const result = Object.freeze({
-		id,
-		schema
-	});
-	if (new globalThis.TextEncoder().encode(JSON.stringify(result)).byteLength > sourceDocumentSchemaLimits.maxBytes) fail$2("SCHEMA_LIMIT", "The inline schema exceeds its UTF-8 size limit.");
-	return result;
-}
-//#endregion
-//#region src/source-document/preview.js
-var fail$1 = (message) => {
-	throw new SourceDocumentError("DOCUMENT_PREVIEW_INVALID", message);
-};
-var plain = (value) => value && typeof value === "object" && !Array.isArray(value) && [Object.prototype, null].includes(Object.getPrototypeOf(value));
-/** Copy finite declarative JSON only; no project archives, owner payloads or executable callbacks. */
-function normalizeSourceDocumentPreview(model, requestedKind) {
-	identifier(requestedKind, "preview representation kind");
-	if (!plain(model)) fail$1("A declarative document preview is required.");
-	const allowed = /* @__PURE__ */ new Set([
-		"kind",
-		"source",
-		"blocks",
-		"rootIds",
-		"blockDefinitions",
-		"menus"
-	]);
-	if (Object.keys(model).some((key) => !allowed.has(key))) fail$1("A preview cannot contain project, archive or asset payloads.");
-	const ancestors = /* @__PURE__ */ new Set();
-	let nodes = 0, bytes = 0;
-	const copy = (value, depth = 0) => {
-		if (++nodes > 5e5 || depth > 80) fail$1("The document preview exceeds its structural limit.");
-		if (value === null || typeof value === "boolean") return value;
-		if (typeof value === "number") {
-			if (!Number.isFinite(value)) fail$1("Preview numbers must be finite.");
-			return value;
-		}
-		if (typeof value === "string") {
-			bytes += new TextEncoder().encode(value).byteLength;
-			if (bytes > 8388608) fail$1("The document preview exceeds its byte limit.");
-			return value;
-		}
-		if (!value || typeof value !== "object" || ancestors.has(value) || !Array.isArray(value) && !plain(value)) fail$1("Preview data must be finite plain JSON without callbacks.");
-		if (Object.getOwnPropertySymbols(value).length) fail$1("Preview JSON cannot contain symbols.");
-		const properties = Object.getOwnPropertyDescriptors(value), array = Array.isArray(value), result = array ? [] : {};
-		if (array && (!Number.isSafeInteger(value.length) || Object.keys(properties).length !== value.length + 1)) fail$1("Preview arrays cannot contain holes or custom fields.");
-		ancestors.add(value);
-		for (const [key, descriptor] of Object.entries(properties)) {
-			if (array && key === "length") continue;
-			if (!Object.hasOwn(descriptor, "value") || !descriptor.enumerable) fail$1("Preview JSON cannot contain accessors or hidden fields.");
-			bytes += new TextEncoder().encode(key).byteLength;
-			if (bytes > 8388608) fail$1("The document preview exceeds its byte limit.");
-			Object.defineProperty(result, key, {
-				value: copy(descriptor.value, depth + 1),
-				enumerable: true
-			});
-		}
-		ancestors.delete(value);
-		return Object.freeze(result);
-	};
-	const result = copy(model);
-	if (result.kind !== requestedKind || typeof result.source !== "string") fail$1("A preview must identify the requested kind and its source.");
-	if (result.blocks !== void 0 && (!plain(result.blocks) || Object.keys(result.blocks).length > 1e5 || Object.values(result.blocks).some((block) => !plain(block) || typeof block.opcode !== "string"))) fail$1("Preview blocks must be a bounded serialized block dictionary.");
-	if (result.rootIds !== void 0 && (!Array.isArray(result.rootIds) || result.rootIds.length > 256 || new Set(result.rootIds).size !== result.rootIds.length || result.rootIds.some((id) => typeof id !== "string" || !Object.hasOwn(result.blocks || {}, id)))) fail$1("Preview roots must identify distinct included blocks.");
-	if (result.blockDefinitions !== void 0) {
-		if (!Array.isArray(result.blockDefinitions) || result.blockDefinitions.length > 4096) fail$1("Preview block definitions must be a bounded array.");
-		const seen = /* @__PURE__ */ new Set();
-		for (const definition of result.blockDefinitions) {
-			if (!plain(definition) || typeof definition.opcode !== "string" || !definition.opcode || definition.opcode.length > 1024 || seen.has(definition.opcode) || typeof definition.blockType !== "string" || !(typeof definition.text === "string" || Array.isArray(definition.text) && definition.text.every((text) => typeof text === "string"))) fail$1("Preview definitions require distinct full opcodes and declarative labels.");
-			if (definition.blockIconURI !== void 0) {
-				if (typeof definition.blockIconURI !== "string") fail$1("A preview block icon must be an image URI.");
-				let uri;
-				try {
-					uri = new URL(definition.blockIconURI, "https://preview.invalid/");
-				} catch {
-					fail$1("A preview block icon URI is invalid.");
-				}
-				if (![
-					"http:",
-					"https:",
-					"data:"
-				].includes(uri.protocol) || uri.protocol === "data:" && !/^data:image\//iu.test(definition.blockIconURI)) fail$1("A preview cannot include executable icon URIs.");
-			}
-			seen.add(definition.opcode);
-		}
-	}
-	if (result.menus !== void 0 && (!plain(result.menus) || Object.values(result.menus).some((menu) => !plain(menu) || !Array.isArray(menu.items)))) fail$1("Preview menus must contain static item arrays.");
-	if (new TextEncoder().encode(JSON.stringify(result)).byteLength > 8388608) fail$1("The serialized preview exceeds its byte limit.");
-	return result;
-}
-//#endregion
 //#region src/source-document/registry.js
-var providerRegistrySymbol = Symbol.for("@kubohiroya/turbowarp-embedded-yaml/provider-registry/v1");
 var validAdapter = (adapter) => adapter && [
 	"inspect",
 	"capture",
@@ -14962,7 +15000,7 @@ function createProviderRegistry() {
 /** Share a registry across independently bundled owners without importing the Editor or VM. */
 function getProviderRegistry(scope) {
 	if ((typeof scope !== "object" || scope === null) && typeof scope !== "function") fail$2("REGISTRY_SCOPE_INVALID", "A runtime-local scope object is required.");
-	const previous = Object.getOwnPropertyDescriptor(scope, providerRegistrySymbol);
+	const previous = Object.getOwnPropertyDescriptor(scope, sourceDocumentRegistrySymbol);
 	if (previous) {
 		if (!Object.hasOwn(previous, "value")) fail$2("REGISTRY_SCOPE_INVALID", "The registry slot cannot be an accessor.");
 		const registry = previous.value;
@@ -14970,7 +15008,7 @@ function getProviderRegistry(scope) {
 		if (!registry.disposed) return registry;
 	}
 	const registry = createProviderRegistry();
-	Object.defineProperty(scope, providerRegistrySymbol, {
+	Object.defineProperty(scope, sourceDocumentRegistrySymbol, {
 		value: registry,
 		enumerable: false,
 		writable: false,
@@ -27293,44 +27331,6 @@ var BinTrieFlags;
 	/** Bits 12..0: the inline value of a VALUE_LENGTH = 1 header word. */
 	BinTrieFlags[BinTrieFlags["VALUE_MASK"] = 8191] = "VALUE_MASK";
 })(BinTrieFlags || (BinTrieFlags = {}));
-//#endregion
-//#region \0@oxc-project+runtime@0.148.0/helpers/esm/typeof.js
-function _typeof(o) {
-	"@babel/helpers - typeof";
-	return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function(o) {
-		return typeof o;
-	} : function(o) {
-		return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o;
-	}, _typeof(o);
-}
-//#endregion
-//#region \0@oxc-project+runtime@0.148.0/helpers/esm/toPrimitive.js
-function toPrimitive(t, r) {
-	if ("object" != _typeof(t) || !t) return t;
-	var e = t[Symbol.toPrimitive];
-	if (void 0 !== e) {
-		var i = e.call(t, r || "default");
-		if ("object" != _typeof(i)) return i;
-		throw new TypeError("@@toPrimitive must return a primitive value.");
-	}
-	return ("string" === r ? String : Number)(t);
-}
-//#endregion
-//#region \0@oxc-project+runtime@0.148.0/helpers/esm/toPropertyKey.js
-function toPropertyKey(t) {
-	var i = toPrimitive(t, "string");
-	return "symbol" == _typeof(i) ? i : i + "";
-}
-//#endregion
-//#region \0@oxc-project+runtime@0.148.0/helpers/esm/defineProperty.js
-function _defineProperty(e, r, t) {
-	return (r = toPropertyKey(r)) in e ? Object.defineProperty(e, r, {
-		value: t,
-		enumerable: !0,
-		configurable: !0,
-		writable: !0
-	}) : e[r] = t, e;
-}
 //#endregion
 //#region node_modules/.pnpm/entities@8.1.0/node_modules/entities/dist/decode.js
 var CharCodes;

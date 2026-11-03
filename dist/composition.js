@@ -1,162 +1,12 @@
 // src/source-document/reference.js
-var PREFIX = "tw-embedded-yaml:1:";
-var SourceDocumentError = class extends Error {
-  constructor(code, message) {
-    super(message);
-    this.name = "SourceDocumentError";
-    this.code = code;
-  }
-};
-var fail = (code, message) => {
-  throw new SourceDocumentError(code, message);
-};
-var hasControlCharacters = (value) => Array.from(value).some((character) => {
-  const code = character.codePointAt(0);
-  return code < 32 || code === 127;
-});
-var identifier = (value, name) => {
-  if (typeof value !== "string" || !value.length || value.length > 1024 || hasControlCharacters(value)) {
-    fail("REFERENCE_INVALID", `${name} must be a bounded nonempty identifier.`);
-  }
-  return value;
-};
-function encodeSourceDocumentReference(reference2) {
-  if (!reference2 || typeof reference2 !== "object") fail("REFERENCE_INVALID", "A document reference is required.");
-  const providerId = identifier(reference2.providerId, "providerId");
-  const documentId = identifier(reference2.documentId, "documentId");
-  try {
-    return `${PREFIX}${encodeURIComponent(providerId)}:${encodeURIComponent(documentId)}`;
-  } catch {
-    return fail("REFERENCE_INVALID", "The reference contains invalid Unicode.");
-  }
-}
-function decodeSourceDocumentReference(value) {
-  if (typeof value !== "string" || value.length > 8192 || !value.startsWith(PREFIX)) fail("REFERENCE_INVALID", "The block does not contain a valid source document reference.");
-  const parts = value.slice(PREFIX.length).split(":");
-  if (parts.length !== 2) fail("REFERENCE_INVALID", "The source document reference is malformed.");
-  let reference2;
-  try {
-    reference2 = { providerId: decodeURIComponent(parts[0]), documentId: decodeURIComponent(parts[1]) };
-  } catch {
-    return fail("REFERENCE_INVALID", "The source document reference encoding is invalid.");
-  }
-  if (encodeSourceDocumentReference(reference2) !== value) fail("REFERENCE_INVALID", "The source document reference is not canonical.");
-  return Object.freeze(reference2);
-}
+import { SourceDocumentError, encodeSourceDocumentReference, decodeSourceDocumentReference } from "@kubohiroya/turbowarp-document-source";
+import { fail, identifier, hasControlCharacters } from "@kubohiroya/turbowarp-document-source/protocol";
 
 // src/source-document/schema.js
-var sourceDocumentSchemaLimits = Object.freeze({ maxBytes: 1024 * 1024, maxDepth: 64, maxNodes: 1e5 });
-function normalizeSourceDocumentSchema(metadata) {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) fail("SCHEMA_INVALID", "Inline schema metadata must be an object.");
-  const properties = Object.getOwnPropertyDescriptors(metadata);
-  if (!properties.id || !Object.hasOwn(properties.id, "value") || !properties.schema || !Object.hasOwn(properties.schema, "value") || Object.keys(properties).some((key) => key !== "id" && key !== "schema")) fail("SCHEMA_INVALID", "Inline schema metadata requires only id and schema.");
-  const id = identifier(properties.id.value, "schema id");
-  const root = properties.schema.value;
-  if (!root || typeof root !== "object" || Array.isArray(root)) fail("SCHEMA_INVALID", "An inline JSON Schema object is required.");
-  const path = /* @__PURE__ */ new Set();
-  let nodes = 0, characters = 0;
-  const clone = (value, depth) => {
-    if (++nodes > sourceDocumentSchemaLimits.maxNodes || depth > sourceDocumentSchemaLimits.maxDepth) fail("SCHEMA_LIMIT", "The inline schema is too deeply nested or has too many values.");
-    if (value === null || typeof value === "boolean") return value;
-    if (typeof value === "number") {
-      if (!Number.isFinite(value)) fail("SCHEMA_INVALID", "Schema numbers must be finite.");
-      return value;
-    }
-    if (typeof value === "string") {
-      characters += value.length;
-      if (characters > sourceDocumentSchemaLimits.maxBytes) fail("SCHEMA_LIMIT", "The inline schema exceeds its size limit.");
-      return value;
-    }
-    if (!value || typeof value !== "object") fail("SCHEMA_INVALID", "Schemas must contain only JSON values.");
-    if (path.has(value)) fail("SCHEMA_INVALID", "Cyclic schema payloads are unsupported.");
-    if (Object.getOwnPropertySymbols(value).length) fail("SCHEMA_INVALID", "Schemas cannot contain symbol properties.");
-    const prototype = Object.getPrototypeOf(value);
-    if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) fail("SCHEMA_INVALID", "Schemas must use plain JSON objects.");
-    path.add(value);
-    const result2 = Array.isArray(value) ? [] : {};
-    const properties2 = Object.getOwnPropertyDescriptors(value);
-    if (Array.isArray(value) && (value.length > sourceDocumentSchemaLimits.maxNodes || Object.keys(properties2).filter((key) => key !== "length").some((key, index) => key !== String(index)) || Object.keys(properties2).length !== value.length + 1)) fail("SCHEMA_INVALID", "Schema arrays must not contain holes or custom properties.");
-    for (const [key, property] of Object.entries(properties2)) {
-      if (Array.isArray(value) && key === "length") continue;
-      if (!Object.hasOwn(property, "value") || !property.enumerable) fail("SCHEMA_INVALID", "Schema payloads cannot contain accessors or hidden properties.");
-      characters += key.length;
-      if (characters > sourceDocumentSchemaLimits.maxBytes) fail("SCHEMA_LIMIT", "The inline schema exceeds its size limit.");
-      Object.defineProperty(result2, key, { value: clone(property.value, depth + 1), enumerable: true, writable: false, configurable: false });
-    }
-    path.delete(value);
-    return Object.freeze(result2);
-  };
-  const schema = clone(root, 0);
-  const result = Object.freeze({ id, schema });
-  if (new globalThis.TextEncoder().encode(JSON.stringify(result)).byteLength > sourceDocumentSchemaLimits.maxBytes) fail("SCHEMA_LIMIT", "The inline schema exceeds its UTF-8 size limit.");
-  return result;
-}
+import { normalizeSourceDocumentSchema, sourceDocumentSchemaLimits } from "@kubohiroya/turbowarp-document-source";
 
 // src/source-document/preview.js
-var fail2 = (message) => {
-  throw new SourceDocumentError("DOCUMENT_PREVIEW_INVALID", message);
-};
-var plain = (value) => value && typeof value === "object" && !Array.isArray(value) && [Object.prototype, null].includes(Object.getPrototypeOf(value));
-function normalizeSourceDocumentPreview(model, requestedKind) {
-  identifier(requestedKind, "preview representation kind");
-  if (!plain(model)) fail2("A declarative document preview is required.");
-  const allowed = /* @__PURE__ */ new Set(["kind", "source", "blocks", "rootIds", "blockDefinitions", "menus"]);
-  if (Object.keys(model).some((key) => !allowed.has(key))) fail2("A preview cannot contain project, archive or asset payloads.");
-  const ancestors = /* @__PURE__ */ new Set();
-  let nodes = 0, bytes = 0;
-  const copy = (value, depth = 0) => {
-    if (++nodes > 5e5 || depth > 80) fail2("The document preview exceeds its structural limit.");
-    if (value === null || typeof value === "boolean") return value;
-    if (typeof value === "number") {
-      if (!Number.isFinite(value)) fail2("Preview numbers must be finite.");
-      return value;
-    }
-    if (typeof value === "string") {
-      bytes += new TextEncoder().encode(value).byteLength;
-      if (bytes > 8 * 1024 * 1024) fail2("The document preview exceeds its byte limit.");
-      return value;
-    }
-    if (!value || typeof value !== "object" || ancestors.has(value) || !Array.isArray(value) && !plain(value)) fail2("Preview data must be finite plain JSON without callbacks.");
-    if (Object.getOwnPropertySymbols(value).length) fail2("Preview JSON cannot contain symbols.");
-    const properties = Object.getOwnPropertyDescriptors(value), array = Array.isArray(value), result2 = array ? [] : {};
-    if (array && (!Number.isSafeInteger(value.length) || Object.keys(properties).length !== value.length + 1)) fail2("Preview arrays cannot contain holes or custom fields.");
-    ancestors.add(value);
-    for (const [key, descriptor] of Object.entries(properties)) {
-      if (array && key === "length") continue;
-      if (!Object.hasOwn(descriptor, "value") || !descriptor.enumerable) fail2("Preview JSON cannot contain accessors or hidden fields.");
-      bytes += new TextEncoder().encode(key).byteLength;
-      if (bytes > 8 * 1024 * 1024) fail2("The document preview exceeds its byte limit.");
-      Object.defineProperty(result2, key, { value: copy(descriptor.value, depth + 1), enumerable: true });
-    }
-    ancestors.delete(value);
-    return Object.freeze(result2);
-  };
-  const result = copy(model);
-  if (result.kind !== requestedKind || typeof result.source !== "string") fail2("A preview must identify the requested kind and its source.");
-  if (result.blocks !== void 0 && (!plain(result.blocks) || Object.keys(result.blocks).length > 1e5 || Object.values(result.blocks).some((block) => !plain(block) || typeof block.opcode !== "string"))) fail2("Preview blocks must be a bounded serialized block dictionary.");
-  if (result.rootIds !== void 0 && (!Array.isArray(result.rootIds) || result.rootIds.length > 256 || new Set(result.rootIds).size !== result.rootIds.length || result.rootIds.some((id) => typeof id !== "string" || !Object.hasOwn(result.blocks || {}, id)))) fail2("Preview roots must identify distinct included blocks.");
-  if (result.blockDefinitions !== void 0) {
-    if (!Array.isArray(result.blockDefinitions) || result.blockDefinitions.length > 4096) fail2("Preview block definitions must be a bounded array.");
-    const seen = /* @__PURE__ */ new Set();
-    for (const definition of result.blockDefinitions) {
-      if (!plain(definition) || typeof definition.opcode !== "string" || !definition.opcode || definition.opcode.length > 1024 || seen.has(definition.opcode) || typeof definition.blockType !== "string" || !(typeof definition.text === "string" || Array.isArray(definition.text) && definition.text.every((text) => typeof text === "string"))) fail2("Preview definitions require distinct full opcodes and declarative labels.");
-      if (definition.blockIconURI !== void 0) {
-        if (typeof definition.blockIconURI !== "string") fail2("A preview block icon must be an image URI.");
-        let uri;
-        try {
-          uri = new URL(definition.blockIconURI, "https://preview.invalid/");
-        } catch {
-          fail2("A preview block icon URI is invalid.");
-        }
-        if (!["http:", "https:", "data:"].includes(uri.protocol) || uri.protocol === "data:" && !/^data:image\//iu.test(definition.blockIconURI)) fail2("A preview cannot include executable icon URIs.");
-      }
-      seen.add(definition.opcode);
-    }
-  }
-  if (result.menus !== void 0 && (!plain(result.menus) || Object.values(result.menus).some((menu) => !plain(menu) || !Array.isArray(menu.items)))) fail2("Preview menus must contain static item arrays.");
-  if (new TextEncoder().encode(JSON.stringify(result)).byteLength > 8 * 1024 * 1024) fail2("The serialized preview exceeds its byte limit.");
-  return result;
-}
+import { normalizeSourceDocumentPreview } from "@kubohiroya/turbowarp-document-source";
 
 // src/source-document/docs-url.js
 function normalizeDocsURL(value) {
@@ -172,7 +22,8 @@ function normalizeDocsURL(value) {
 }
 
 // src/source-document/registry.js
-var providerRegistrySymbol = /* @__PURE__ */ Symbol.for("@kubohiroya/turbowarp-embedded-yaml/provider-registry/v1");
+import { sourceDocumentRegistrySymbol } from "@kubohiroya/turbowarp-document-source";
+import { sourceDocumentRegistrySymbol as providerRegistrySymbol } from "@kubohiroya/turbowarp-document-source";
 var validAdapter = (adapter) => adapter && ["inspect", "capture", "prepare", "commit", "dispose"].every((name) => typeof adapter[name] === "function");
 var reference = (value) => typeof value === "string" ? decodeSourceDocumentReference(value) : decodeSourceDocumentReference(encodeSourceDocumentReference(value));
 var sourceRepresentations = (value) => {
@@ -450,23 +301,23 @@ var DocumentTreeError = class extends Error {
     this.code = code;
   }
 };
-var fail3 = (code, message) => {
+var fail2 = (code, message) => {
   throw new DocumentTreeError(code, message);
 };
 var isLimit = (value) => Number.isSafeInteger(value) && value >= 0;
 var captureOptions = (options) => {
-  if (typeof options !== "object" || options === null) fail3("DOCUMENT_TREE_OPTIONS_INVALID", "Capture options are required.");
+  if (typeof options !== "object" || options === null) fail2("DOCUMENT_TREE_OPTIONS_INVALID", "Capture options are required.");
   const { location, positions = false, limits } = options;
-  if (typeof location !== "string") fail3("INVALID_LOCATION", "A document location must be text.");
-  if (typeof positions !== "boolean") fail3("DOCUMENT_TREE_OPTIONS_INVALID", "positions must be true or false.");
+  if (typeof location !== "string") fail2("INVALID_LOCATION", "A document location must be text.");
+  if (typeof positions !== "boolean") fail2("DOCUMENT_TREE_OPTIONS_INVALID", "positions must be true or false.");
   if (typeof limits !== "object" || limits === null || !isLimit(limits.maxDepth) || !isLimit(limits.maxNodes)) {
-    fail3("DOCUMENT_TREE_OPTIONS_INVALID", "limits.maxDepth and limits.maxNodes must be non-negative integers.");
+    fail2("DOCUMENT_TREE_OPTIONS_INVALID", "limits.maxDepth and limits.maxNodes must be non-negative integers.");
   }
   return Object.freeze({ location, positions, limits: Object.freeze({ maxDepth: limits.maxDepth, maxNodes: limits.maxNodes }) });
 };
 var captureResult = (result) => {
   if (typeof result !== "object" || result === null || result.kind !== "html" && result.kind !== "markdown" || typeof result.revision !== "string" || typeof result.root !== "object" || result.root === null || Array.isArray(result.root)) {
-    fail3("DOCUMENT_TREE_PROVIDER_INVALID", "The document tree provider returned an invalid capture.");
+    fail2("DOCUMENT_TREE_PROVIDER_INVALID", "The document tree provider returned an invalid capture.");
   }
   return { kind: result.kind, revision: result.revision, root: result.root };
 };
@@ -475,7 +326,7 @@ function createDocumentTreeRegistry() {
   return Object.freeze({
     apiVersion: 1,
     register(provider) {
-      if (!provider || typeof provider.capture !== "function") fail3("DOCUMENT_TREE_PROVIDER_INVALID", "A document tree provider with capture() is required.");
+      if (!provider || typeof provider.capture !== "function") fail2("DOCUMENT_TREE_PROVIDER_INVALID", "A document tree provider with capture() is required.");
       const entry = Object.freeze({ capture: provider.capture.bind(provider) });
       entries.push(entry);
       let registered = true;
@@ -489,18 +340,18 @@ function createDocumentTreeRegistry() {
     capture(target, name, options) {
       const normalized = captureOptions(options);
       const entry = entries.at(-1);
-      if (!entry) fail3("DOCUMENT_TREE_UNAVAILABLE", "Document Data is not loaded with DOCUMENT_DATA_MVP enabled.");
+      if (!entry) fail2("DOCUMENT_TREE_UNAVAILABLE", "Document Data is not loaded with DOCUMENT_DATA_MVP enabled.");
       return captureResult(entry.capture(target, name, normalized));
     }
   });
 }
 function getDocumentTreeRegistry(scope) {
-  if ((typeof scope !== "object" || scope === null) && typeof scope !== "function") fail3("REGISTRY_SCOPE_INVALID", "A runtime-local scope object is required.");
+  if ((typeof scope !== "object" || scope === null) && typeof scope !== "function") fail2("REGISTRY_SCOPE_INVALID", "A runtime-local scope object is required.");
   const previous = Object.getOwnPropertyDescriptor(scope, documentTreeRegistrySymbol);
   if (previous) {
-    if (!Object.hasOwn(previous, "value")) fail3("REGISTRY_SCOPE_INVALID", "The registry slot cannot be an accessor.");
+    if (!Object.hasOwn(previous, "value")) fail2("REGISTRY_SCOPE_INVALID", "The registry slot cannot be an accessor.");
     const registry2 = previous.value;
-    if (registry2?.apiVersion !== 1 || typeof registry2.register !== "function" || typeof registry2.capture !== "function") fail3("REGISTRY_INCOMPATIBLE", "An incompatible document tree registry occupies this scope.");
+    if (registry2?.apiVersion !== 1 || typeof registry2.register !== "function" || typeof registry2.capture !== "function") fail2("REGISTRY_INCOMPATIBLE", "An incompatible document tree registry occupies this scope.");
     return registry2;
   }
   const registry = createDocumentTreeRegistry();
@@ -527,7 +378,7 @@ export {
   normalizeSourceDocumentSchema as normalizeSchemaMetadata,
   normalizeSourceDocumentPreview,
   normalizeSourceDocumentSchema,
-  providerRegistrySymbol,
-  providerRegistrySymbol as sourceDocumentRegistrySymbol,
+  sourceDocumentRegistrySymbol as providerRegistrySymbol,
+  sourceDocumentRegistrySymbol,
   sourceDocumentSchemaLimits
 };
