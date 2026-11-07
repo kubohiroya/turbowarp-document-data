@@ -119,11 +119,12 @@ it('uses the explicit draft07 profile for a declared draft07 owner Schema',()=>{
 it('keeps the same raw provider registered across runtime clear/load while invalidating all old captures',async()=>{
  const f=fixture();f.store.put(input);const provider=createSourceDocumentProvider(f.vm),registry=getSourceDocumentRegistry(f.vm),off=registry.register(provider);
  const ref={providerId:'document-data',documentId:'settings'},old=registry.open(ref),snapshot=old.capture(),candidate=await old.prepare(snapshot,yaml+'# old session\r\n');
+ expect(registry.list()[0]?.filename).toBe(input.filename);
  // The reset event alone must invalidate captures, even before storage or target identity changes.
  f.runtime.emit('RUNTIME_DISPOSED');await expect(old.prepare(snapshot,yaml)).rejects.toMatchObject({code:'PROJECT_CONFLICT'});
  f.runtime.extensionStorage={};f.runtime.targets=[];expect(registry.list()).toEqual([]);await expect(old.commit(snapshot,candidate)).rejects.toThrow();
- f.store.put({...input,source:'value: 10\r\n'});f.runtime.targets=[{isOriginal:true,name:'Stage'}];f.runtime.emit('PROJECT_LOADED');
- expect(registry.list()[0]?.reference).toEqual(ref);expect(registry.open(ref).capture().source).toBe('value: 10\r\n');
+ f.store.put({...input,filename:'replacement.yaml',source:'value: 10\r\n'});f.runtime.targets=[{isOriginal:true,name:'Stage'}];f.runtime.emit('PROJECT_LOADED');
+ expect(registry.list()[0]).toMatchObject({reference:ref,filename:'replacement.yaml'});expect(registry.open(ref).capture().source).toBe('value: 10\r\n');
  const next=registry.open(ref),fresh=next.capture();await next.commit(fresh,await next.prepare(fresh,'value: 11\r\n'));expect(f.store.read('settings').source).toBe('value: 11\r\n');
  off();f.store.dispose();
 });

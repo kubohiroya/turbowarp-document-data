@@ -52,6 +52,18 @@ const documentsFor = provider => {
             ...(document.schema === undefined ? {} : {schema: normalizeSchemaMetadata(document.schema)})});
     });
 };
+const documentsForList = entry => {
+    if (entry.documents !== null) return entry.documents;
+    const revision = entry.revision;
+    const documents = documentsFor(entry.provider);
+    // Only providers that report metadata changes can share a snapshot.
+    if (entry.unsubscribe && entry.revision === revision) entry.documents = documents;
+    return documents;
+};
+const invalidateDocuments = entry => {
+    entry.revision++;
+    entry.documents = null;
+};
 export function createProviderRegistry() {
     const entries = new Map();
     const listeners = new Set();
@@ -59,6 +71,7 @@ export function createProviderRegistry() {
     const active = () => { if (disposed) fail('REGISTRY_DISPOSED', 'The document registry is closed.'); };
     const notify = () => { for (const listener of [...listeners]) { try { listener(); } catch { /* Observers cannot undo a completed registration. */ } } };
     const cleanup = entry => {
+        invalidateDocuments(entry);
         const failures = [];
         try { entry.unsubscribe?.(); } catch (error) { failures.push(error); }
         for (const adapter of [...entry.adapters]) { try { adapter.dispose(); } catch (error) { failures.push(error); } }
@@ -83,11 +96,15 @@ export function createProviderRegistry() {
             const captured = {id, list: provider.list.bind(provider), open: provider.open.bind(provider),
                 ...(provider.dispose ? {dispose: provider.dispose.bind(provider)} : {})};
             documentsFor(captured);
-            const entry = {provider: captured, opcodes: known, adapters: new Set(), unsubscribe: null};
+            const entry = {provider: captured, opcodes: known, adapters: new Set(), unsubscribe: null, revision: 0, documents: null};
             entries.set(id, entry);
             try {
                 if (provider.subscribe) {
-                    entry.unsubscribe = provider.subscribe(() => { if (entries.get(id) === entry) notify(); });
+                    entry.unsubscribe = provider.subscribe(() => {
+                        if (entries.get(id) !== entry) return;
+                        invalidateDocuments(entry);
+                        notify();
+                    });
                     if (typeof entry.unsubscribe !== 'function') fail('PROVIDER_INVALID', 'Provider subscriptions must return an unsubscribe function.');
                 }
             } catch (error) { entries.delete(id); throw error; }
@@ -101,7 +118,7 @@ export function createProviderRegistry() {
         },
         list() {
             active();
-            return Object.freeze([...entries.values()].flatMap(entry => documentsFor(entry.provider)));
+            return Object.freeze([...entries.values()].flatMap(documentsForList));
         },
         getHatOpcodes() {
             active();

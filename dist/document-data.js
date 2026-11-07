@@ -14807,6 +14807,17 @@ var documentsFor = (provider) => {
 		});
 	});
 };
+var documentsForList = (entry) => {
+	if (entry.documents !== null) return entry.documents;
+	const revision = entry.revision;
+	const documents = documentsFor(entry.provider);
+	if (entry.unsubscribe && entry.revision === revision) entry.documents = documents;
+	return documents;
+};
+var invalidateDocuments = (entry) => {
+	entry.revision++;
+	entry.documents = null;
+};
 function createProviderRegistry() {
 	const entries = /* @__PURE__ */ new Map();
 	const listeners = /* @__PURE__ */ new Set();
@@ -14820,6 +14831,7 @@ function createProviderRegistry() {
 		} catch {}
 	};
 	const cleanup = (entry) => {
+		invalidateDocuments(entry);
 		const failures = [];
 		try {
 			entry.unsubscribe?.();
@@ -14863,13 +14875,17 @@ function createProviderRegistry() {
 				provider: captured,
 				opcodes: known,
 				adapters: /* @__PURE__ */ new Set(),
-				unsubscribe: null
+				unsubscribe: null,
+				revision: 0,
+				documents: null
 			};
 			entries.set(id, entry);
 			try {
 				if (provider.subscribe) {
 					entry.unsubscribe = provider.subscribe(() => {
-						if (entries.get(id) === entry) notify();
+						if (entries.get(id) !== entry) return;
+						invalidateDocuments(entry);
+						notify();
 					});
 					if (typeof entry.unsubscribe !== "function") fail$2("PROVIDER_INVALID", "Provider subscriptions must return an unsubscribe function.");
 				}
@@ -14892,7 +14908,7 @@ function createProviderRegistry() {
 		},
 		list() {
 			active();
-			return Object.freeze([...entries.values()].flatMap((entry) => documentsFor(entry.provider)));
+			return Object.freeze([...entries.values()].flatMap(documentsForList));
 		},
 		getHatOpcodes() {
 			active();

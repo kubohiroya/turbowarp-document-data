@@ -109,6 +109,96 @@ test('unregister and dispose close open adapters, unsubscribe providers and noti
     adapter.dispose();assert.equal(f.state.closed,1);assert.equal(adapter.inspect().available,false);await assert.rejects(adapter.prepare({source:''},''),code('DOCUMENT_CLOSED'));stop();registry.dispose();
 });
 
+test('list shares validated metadata until that provider reports a change', () => {
+    const registry = shared.createProviderRegistry();
+    let documents = [{documentId: 'main', filename: 'old.yaml', schema: {id: 'main', schema: {type: 'object'}}}];
+    let changed!: () => void;
+    let reads = 0;
+    let otherReads = 0;
+    const unregister = registry.register({
+        id: 'owner',
+        list() { reads++; return documents; },
+        open() { throw Error('Unexpected open'); },
+        subscribe(listener) { changed = listener; return () => {}; }
+    });
+    const other = makeProvider('other-owner').provider;
+    registry.register({...other, list() { otherReads++; return other.list(); }});
+    const first = registry.list();
+    assert.equal(reads, 2); // Registration validation, then the first listing.
+    assert.equal(registry.list()[0], first[0]);
+    assert.equal(reads, 2);
+    assert.ok(Object.isFrozen(first[0].schema?.schema));
+
+    documents = [
+        {documentId: 'main', filename: 'renamed.yaml', schema: {id: 'main', schema: {type: 'array'}}},
+        {documentId: 'second', filename: 'second.yaml', schema: {id: 'second', schema: {type: 'object'}}}
+    ];
+    let observed: string[] | undefined;
+    const stop = registry.subscribe(() => { observed = registry.list().slice(0, 2).map(item => item.filename); });
+    changed();
+    stop();
+    assert.deepEqual(observed, ['renamed.yaml', 'second.yaml']);
+    assert.equal(registry.list()[0].schema?.schema.type, 'array');
+    assert.equal(first[0].filename, 'old.yaml');
+    assert.equal(reads, 3);
+    assert.equal(otherReads, 2);
+
+    documents = [];
+    changed();
+    assert.equal(registry.list().some(item => item.reference.providerId === 'owner'), false);
+    unregister();
+    registry.register({...makeProvider('owner').provider, list: () => [{documentId: 'new', filename: 'new.yaml'}]});
+    changed(); // A callback from the removed registration has no effect.
+    assert.deepEqual(registry.list().filter(item => item.reference.providerId === 'owner').map(item => item.filename),
+        ['new.yaml']);
+    registry.dispose();
+});
+
+test('providers without subscriptions are read on every list call', () => {
+    const registry = shared.createProviderRegistry();
+    let filename = 'old.yaml';
+    registry.register({
+        id: 'owner', list: () => [{documentId: 'main', filename}],
+        open() { throw Error('Unexpected open'); }
+    });
+    assert.equal(registry.list()[0].filename, 'old.yaml');
+    filename = 'new.yaml';
+    assert.equal(registry.list()[0].filename, 'new.yaml');
+    filename = '';
+    assert.throws(() => registry.list(), code('DOCUMENT_METADATA_INVALID'));
+    registry.dispose();
+});
+
+test('a failed or invalidated read cannot repopulate the list cache', () => {
+    const registry = shared.createProviderRegistry();
+    let filename = 'old.yaml';
+    let replaceDuringRead = false;
+    let changed!: () => void;
+    registry.register({
+        id: 'owner',
+        list() {
+            const result = [{documentId: 'main', filename}];
+            if (replaceDuringRead) {
+                replaceDuringRead = false;
+                filename = 'new.yaml';
+                changed();
+            }
+            return result;
+        },
+        open() { throw Error('Unexpected open'); },
+        subscribe(listener) { changed = listener; return () => {}; }
+    });
+    replaceDuringRead = true;
+    registry.list();
+    assert.equal(registry.list()[0].filename, 'new.yaml');
+    filename = '';
+    changed();
+    assert.throws(() => registry.list(), code('DOCUMENT_METADATA_INVALID'));
+    filename = 'recovered.yaml';
+    assert.equal(registry.list()[0].filename, 'recovered.yaml');
+    registry.dispose();
+});
+
 test('pending preparation cannot become a usable result after its provider is removed', async () => {
     const registry=shared.createProviderRegistry();let done!:(prepared:{source:string})=>void;let disposed=0;
     const unregister=registry.register({id:'owner',list:()=>[{documentId:'x',filename:'x.yaml'}],open:()=>({inspect:()=>({available:true}),capture:()=>({source:''}),prepare:()=>new Promise(resolve=>{done=resolve;}),commit:async()=>({source:''}),dispose(){disposed++;}})});
