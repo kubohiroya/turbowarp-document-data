@@ -7738,7 +7738,7 @@ function _defineProperty(e, r, t) {
 	}) : e[r] = t, e;
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.2.0-rc.0/node_modules/@kubohiroya/turbowarp-document-source/dist/wire.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.4.0/node_modules/@kubohiroya/turbowarp-document-source/dist/wire.js
 var PREFIX = "tw-embedded-yaml:1:";
 var SourceDocumentError = class extends Error {
 	constructor(code, message) {
@@ -7786,7 +7786,7 @@ function decodeSourceDocumentReference(value) {
 	return Object.freeze(reference);
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.2.0-rc.0/node_modules/@kubohiroya/turbowarp-document-source/dist/schema.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.4.0/node_modules/@kubohiroya/turbowarp-document-source/dist/schema.js
 var sourceDocumentSchemaLimits = Object.freeze({
 	maxBytes: 1048576,
 	maxDepth: 64,
@@ -7847,7 +7847,7 @@ function normalizeSourceDocumentSchema(metadata) {
 	return result;
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.2.0-rc.0/node_modules/@kubohiroya/turbowarp-document-source/dist/preview.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.4.0/node_modules/@kubohiroya/turbowarp-document-source/dist/preview.js
 function fail$1(message) {
 	throw new SourceDocumentError("DOCUMENT_PREVIEW_INVALID", message);
 }
@@ -7928,7 +7928,7 @@ function normalizeSourceDocumentPreview(model, requestedKind) {
 	return result;
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.2.0-rc.0/node_modules/@kubohiroya/turbowarp-document-source/dist/index.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.4.0/node_modules/@kubohiroya/turbowarp-document-source/dist/index.js
 var sourceDocumentRegistrySymbol = Symbol.for("@kubohiroya/turbowarp-embedded-yaml/provider-registry/v1");
 //#endregion
 //#region src/source-document/docs-url.js
@@ -14385,7 +14385,7 @@ function parseDocument(source, options = {}) {
 	return doc;
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.9.0-rc.1/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/yaml-json.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.10.0/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/yaml-json.js
 var PARSE_LIMITS = {
 	maxInputBytes: 262144,
 	maxDepth: 64,
@@ -14667,7 +14667,7 @@ function isDataArray(value) {
 	return Array.isArray(value);
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.9.0-rc.1/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/codec.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.10.0/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/codec.js
 /** Parse through the existing bounded fragment parser; source text remains the owner's data. */
 function parseValue(source, format = "auto") {
 	const parsed = parseData(source, format, { jsonObjects: "json" });
@@ -34032,7 +34032,7 @@ function errorMessage(error, fallback) {
 	return error instanceof Error ? error.message : fallback;
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-named-data@0.8.0-rc.1/node_modules/@kubohiroya/turbowarp-named-data/dist/composition.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-named-data@0.8.0/node_modules/@kubohiroya/turbowarp-named-data/dist/composition.js
 var NAMED_DATA_REGISTRY_SYMBOL_KEY = "@kubohiroya/turbowarp-named-data/registry";
 var NAMED_DATA_REGISTRY_SYMBOL = Symbol.for(NAMED_DATA_REGISTRY_SYMBOL_KEY);
 var NAMED_DATA_NAMESPACE_PATTERN = /^[a-z][a-z0-9.-]{0,63}$/u;
