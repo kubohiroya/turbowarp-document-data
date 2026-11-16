@@ -15,8 +15,8 @@ importers:
         specifier: 0.8.0
         version: 0.8.0
       '@kubohiroya/turbowarp-yaml-json':
-        specifier: 0.10.0
-        version: 0.10.0
+        specifier: 0.10.1
+        version: 0.10.1
       mdast-util-from-markdown:
         specifier: ^2.0.3
         version: 2.0.3(supports-color@7.2.0)
@@ -317,8 +317,8 @@ packages:
     resolution: {integrity: sha512-Y73wcm9V6ldihtMME9lJic3eambqHWlLhTXQ78jfzS2EpeECZe1aXnOQeKXkOV2OKIdnowKGGdIdEiAc/Ss3vg==}
     engines: {node: '>=24'}
 
-  '@kubohiroya/turbowarp-yaml-json@0.10.0':
-    resolution: {integrity: sha512-Wq7GxPFqU2xUSgVRGOJKmlBI8skuMkHy8xW3ueSY78MaKPBx+SSFQ4AyqhnWV76Hrhs3LJEV+Q8pZBVNC/uVmg==}
+  '@kubohiroya/turbowarp-yaml-json@0.10.1':
+    resolution: {integrity: sha512-u8mj7wz1a/6iTnDwe7qDKeuBs+NpP7mfVeFyxeyvmGcYmX2dgc/ff6mPQc537zn9rzD8FYMwEZJfF2jgdbNG3w==}
     engines: {node: '>=24'}
 
   '@kubohiroya/vite-plugin-turbowarp-extension@0.11.0':
@@ -1518,7 +1518,7 @@ snapshots:
 
   '@kubohiroya/turbowarp-named-data@0.8.0': {}
 
-  '@kubohiroya/turbowarp-yaml-json@0.10.0':
+  '@kubohiroya/turbowarp-yaml-json@0.10.1':
     dependencies:
       '@kubohiroya/turbowarp-document-source': 0.4.0
       ajv: 8.20.0

@@ -14423,7 +14423,7 @@ function parseDocument(source, options = {}) {
 	return doc;
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.10.0/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/yaml-json.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.10.1/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/yaml-json.js
 var PARSE_LIMITS = {
 	maxInputBytes: 262144,
 	maxDepth: 64,
@@ -14705,7 +14705,7 @@ function isDataArray(value) {
 	return Array.isArray(value);
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.10.0/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/codec.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.10.1/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/codec.js
 /** Parse through the existing bounded fragment parser; source text remains the owner's data. */
 function parseValue(source, format = "auto") {
 	const parsed = parseData(source, format, { jsonObjects: "json" });
