@@ -7269,7 +7269,7 @@ var require__2020 = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	});
 }));
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-extension-data-editor@0.11.3_react@18.3.1/node_modules/@kubohiroya/turbowarp-extension-data-editor/dist/fixed-input-schema.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-extension-data-editor@0.11.4_react@18.3.1/node_modules/@kubohiroya/turbowarp-extension-data-editor/dist/fixed-input-schema.js
 var numberToken = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/u;
 var invalidNumber = Object.freeze({
 	kind: "invalid",
@@ -14423,7 +14423,7 @@ function parseDocument(source, options = {}) {
 	return doc;
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.12.1/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/yaml-json.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.12.2/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/yaml-json.js
 var PARSE_LIMITS = {
 	maxInputBytes: 262144,
 	maxDepth: 64,
@@ -14705,7 +14705,7 @@ function isDataArray(value) {
 	return Array.isArray(value);
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.12.1/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/codec.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.12.2/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/codec.js
 /** Parse through the existing bounded fragment parser; source text remains the owner's data. */
 function parseValue(source, format = "auto") {
 	const parsed = parseData(source, format, { jsonObjects: "json" });
