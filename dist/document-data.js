@@ -7269,7 +7269,7 @@ var require__2020 = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	});
 }));
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-extension-data-editor@0.11.2_react@18.3.1/node_modules/@kubohiroya/turbowarp-extension-data-editor/dist/fixed-input-schema.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-extension-data-editor@0.11.3_react@18.3.1/node_modules/@kubohiroya/turbowarp-extension-data-editor/dist/fixed-input-schema.js
 var numberToken = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/u;
 var invalidNumber = Object.freeze({
 	kind: "invalid",
@@ -7776,7 +7776,7 @@ function _defineProperty(e, r, t) {
 	}) : e[r] = t, e;
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.4.0/node_modules/@kubohiroya/turbowarp-document-source/dist/wire.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.4.1/node_modules/@kubohiroya/turbowarp-document-source/dist/wire.js
 var PREFIX = "tw-embedded-yaml:1:";
 var SourceDocumentError = class extends Error {
 	constructor(code, message) {
@@ -7824,7 +7824,7 @@ function decodeSourceDocumentReference(value) {
 	return Object.freeze(reference);
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.4.0/node_modules/@kubohiroya/turbowarp-document-source/dist/schema.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.4.1/node_modules/@kubohiroya/turbowarp-document-source/dist/schema.js
 var sourceDocumentSchemaLimits = Object.freeze({
 	maxBytes: 1048576,
 	maxDepth: 64,
@@ -7885,7 +7885,7 @@ function normalizeSourceDocumentSchema(metadata) {
 	return result;
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.4.0/node_modules/@kubohiroya/turbowarp-document-source/dist/preview.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.4.1/node_modules/@kubohiroya/turbowarp-document-source/dist/preview.js
 function fail$1(message) {
 	throw new SourceDocumentError("DOCUMENT_PREVIEW_INVALID", message);
 }
@@ -7966,7 +7966,7 @@ function normalizeSourceDocumentPreview(model, requestedKind) {
 	return result;
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.4.0/node_modules/@kubohiroya/turbowarp-document-source/dist/index.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-document-source@0.4.1/node_modules/@kubohiroya/turbowarp-document-source/dist/index.js
 var sourceDocumentRegistrySymbol = Symbol.for("@kubohiroya/turbowarp-embedded-yaml/provider-registry/v1");
 //#endregion
 //#region src/source-document/docs-url.js
@@ -14423,7 +14423,7 @@ function parseDocument(source, options = {}) {
 	return doc;
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.12.0/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/yaml-json.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.12.1/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/yaml-json.js
 var PARSE_LIMITS = {
 	maxInputBytes: 262144,
 	maxDepth: 64,
@@ -14705,7 +14705,7 @@ function isDataArray(value) {
 	return Array.isArray(value);
 }
 //#endregion
-//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.12.0/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/codec.js
+//#region node_modules/.pnpm/@kubohiroya+turbowarp-yaml-json@0.12.1/node_modules/@kubohiroya/turbowarp-yaml-json/lib-codec/codec.js
 /** Parse through the existing bounded fragment parser; source text remains the owner's data. */
 function parseValue(source, format = "auto") {
 	const parsed = parseData(source, format, { jsonObjects: "json" });
